@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "client_communication_manager.h"
 
 
 int main(int argc, char **argv){
@@ -19,6 +19,8 @@ int main(int argc, char **argv){
     printf("\ngroup %s",groupname);
     printf("\nip %s",ip);
     printf("\nport %s",port);
+
+    sendMessage(atoi(port),ip);
 
 
 }

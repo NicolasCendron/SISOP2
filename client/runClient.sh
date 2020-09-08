@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
 make
-./app user group 192.168.0.1 5000
+./app user group 127.0.0.1 5000
