@@ -4,12 +4,9 @@ Trabalho Prático SISOP2
 # Rodar
 
 - Client 
-
-sh runClient.sh
-
+  - sh runClient.sh
 - Server
-
-sh runServer.sh
+  - sh runServer.sh
 
 # Recursos
 
