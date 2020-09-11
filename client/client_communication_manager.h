@@ -1,3 +1,3 @@
 
 void error(char *msg);
-int sendMessage(int portno, char* host);
+int connectToServer(int portno, char* host);

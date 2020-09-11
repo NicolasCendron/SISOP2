@@ -5,11 +5,12 @@
 #include <strings.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include "server_communication_manager.h"
+#include "headers/server_communication_manager.h"
 
 void error(char *msg)
 {
   perror(msg);
+  fflush(stdout);
   exit(1);
 }
 
@@ -21,43 +22,58 @@ void error(char *msg)
 //   char    sin_zero[8]; /* Not used, must be zero */
 // };
 
-int startListening(int portno)
-{
-  int sockfd, newsockfd, clilen, n;
+typedef int bool;
+#define true 1
+#define false 0
 
+struct thread_data
+{
+  int thread_id;
+  int port;
+};
+
+
+void* startListening(void *threadarg)
+{ 
+  struct thread_data *my_data;   
+  my_data = (struct thread_data *) threadarg;
+
+  int portno = my_data->port;
+  int sockfd, newsockfd, clilen, n;
+  printf("\n%d",portno);
   char buffer[256];
   struct sockaddr_in serv_addr, cli_addr;
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  sockfd = socket(AF_INET, SOCK_STREAM, 0); // Cria socket para escutar um client
   if (sockfd < 0)
     error("ERROR opening socket");
 
-  //Zera buffer serv_addr
-  bzero((char *) &serv_addr, sizeof(serv_addr));
-  
+  bzero((char *) &serv_addr, sizeof(serv_addr)); // Prepara a estrutura para ouvir o client
   serv_addr.sin_family = AF_INET;
-  //Converte host byte order para network byte order
-  serv_addr.sin_port = htons(portno);
+  serv_addr.sin_port = htons(portno); //Converte host byte order para network byte order
   serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
 
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) // Faz o bind na porta
     error("ERROR on binding");
 
     printf("\nServer IP: %s : %d","127.0.0.1",portno);
     fflush(stdout);
   
-  listen(sockfd,5);
+  listen(sockfd,5); // Escuta a porta até alguem conectar
+
   clilen = sizeof(cli_addr);
-  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); //Aceita a conexão
   if (newsockfd < 0)
     error("ERROR on accept");  
   
-  bzero(buffer,256);
-  n = read(newsockfd,buffer,255);
-  if (n < 0) error("ERROR reading from socket");
-  printf("Here is the message: %s",buffer);
-  
-  n = write(newsockfd,"I got your message",18);
-  if (n < 0) error("ERROR writing to socket");
-
-  return 0;
+  while(true)
+  {
+    bzero(buffer,256);
+    n = read(newsockfd,buffer,255);
+    if (n < 0) error("ERROR reading from socket");
+    printf("\n Received message: %s",buffer);
+    n = write(newsockfd,"message_here",18);
+    if (n < 0) error("ERROR writing to socket");
+  }
+ 
+  pthread_exit(NULL); 
 }

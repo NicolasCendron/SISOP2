@@ -20,7 +20,7 @@ int main(int argc, char **argv){
     printf("\nip %s",ip);
     printf("\nport %s",port);
 
-    sendMessage(atoi(port),ip);
+    connectToServer(atoi(port),ip);
 
-
+    
 }

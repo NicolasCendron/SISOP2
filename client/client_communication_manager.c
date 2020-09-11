@@ -33,52 +33,67 @@ void error(char *msg)
 // h_addr_list  A pointer to a list of network addresses
 //              for the named host.  Host addresses are
 //              returned in network byte order.
+typedef int bool;
+#define true 1
+#define false 0
 
-int sendMessage(int portno, char* host)
+
+int connectToServer(int portno, char* host)
 {
+  bool bTerminate = false;
   int sockfd, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
     char buffer[256];
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);// Cria Socket
     if (sockfd < 0) 
         {
             error("ERROR opening socket");
             fflush(stdout);
         }
       
-    server = gethostbyname(host);
+    server = gethostbyname(host); // Pega o endereço do Server
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         fflush(stdout);
         exit(0);
     }
       
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+    bzero((char *) &serv_addr, sizeof(serv_addr));  //Inicializa estrutura de comunicação com o server
     serv_addr.sin_family = AF_INET;
     bcopy((char *)server->h_addr, 
          (char *)&serv_addr.sin_addr.s_addr,
          server->h_length);
     serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+   
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
         {
         error("ERROR connecting");
         fflush(stdout);
         }
-    printf("\nPlease enter the message: ");
-    fflush(stdout);
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
-    n = write(sockfd,buffer,strlen(buffer));
-    if (n < 0) 
-         error("ERROR writing to socket");
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
-    if (n < 0) 
-         error("ERROR reading from socket");
-    printf("%s\n",buffer);
+    while(bTerminate == false)
+    {       
+        printf("\nPlease enter the message: ");
+        fflush(stdout);
+        bzero(buffer,256);
+        fgets(buffer,255,stdin); // Pega a mensagem
+        if(strcmp(buffer,"exit") == 0)
+        {
+            bTerminate = true;
+        }
+        else
+        {
+            n = write(sockfd,buffer,strlen(buffer)); // Envia para o server
+            if (n < 0) 
+                error("ERROR writing to socket");
+            bzero(buffer,256);
+            n = read(sockfd,buffer,255); // Pega a resposta do server
+            if (n < 0) 
+                error("ERROR reading from socket");
+        }
+    }
     close(sockfd);
     return 0;
 

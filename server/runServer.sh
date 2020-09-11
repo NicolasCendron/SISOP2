@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
 make
-./server "5000"
+./server "5001"

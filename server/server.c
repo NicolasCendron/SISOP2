@@ -1,18 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include "headers/server_communication_manager.h"
+#define NUM_THREADS 4
 
-#include "server_communication_manager.h"
+struct thread_data
+{
+  int thread_id;
+  int port;
+};
+
+
+pthread_t listeningThreads[NUM_THREADS];
+struct thread_data td[NUM_THREADS];
 
 int main(int argc, char **argv){
 
-    if(argc < 2){
-            fprintf(stderr,"Please follow this template.\n ./server <port>\n");
-            exit(1); //No file name
-        }
-    char *port = argv[1];
+    int i,rc;
+    for( i=0; i < NUM_THREADS; i++ )    
+    {
+        td[i].thread_id = i;
 
+        td[i].port = 5000 + i;
 
+        rc = pthread_create(&listeningThreads[i], NULL,
 
-    startListening(atoi(port));
+                            startListening, (void *)&td[i]);
+
+        if (rc){
+
+            printf("Error:unable to create thread: %d",rc);
+            fflush(stdout);
+            exit(-1);    
+        }    
+    } 
+    pthread_exit(NULL); 
 
 }
