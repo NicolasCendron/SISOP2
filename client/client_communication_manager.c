@@ -42,10 +42,26 @@ typedef int bool;
 #define false 0
 #define BUFFER_SIZE 2560
 #define USER_MESSAGE 1000
+#define USER_CONNECTED_MESSAGE 1001
+
+char* getMessageNameByType(int msgType){
+
+        switch (msgType)
+        {
+        case USER_MESSAGE:
+            return "Mensagem de Texto";
+        case USER_CONNECTED_MESSAGE:
+            return "Usuário Conectado";
+        default:
+            return "";
+        }
+    
+}
 
 void printPacket(packet * pack){
     printf("\n Packet do Cliente");
-    printf("\n Tipo de Mensagem: %d",pack->messageType);
+    printf("\n Tipo de Mensagem: %s",getMessageNameByType(pack->messageType));
+    printf("\n Usuário: %s",pack->_userName);
     printf("\n Texto da mensagem: %s",pack->_payload);
     printf("\n Tamanho da mensagem: %d",pack->length);
     printf("\n Timestamp: %f",pack->timestamp);
@@ -60,7 +76,7 @@ double getTimeStamp()
     return time_in_mill;
 }
 
-packet* createMessage(char* buffer){
+packet* createUserMessage(char* buffer, char* username){
     printf("\nPlease enter the message: ");
     fflush(stdout);
     bzero(buffer,BUFFER_SIZE);
@@ -71,6 +87,17 @@ packet* createMessage(char* buffer){
     pack->timestamp = getTimeStamp();
     pack->length = strlen(buffer);
     pack->_payload = buffer;
+    pack->_userName = username;
+    return pack;
+}
+
+packet* createUserConnectedMessage(char* username){
+    packet *pack = (packet*)malloc(sizeof(packet));
+    pack->messageType = USER_CONNECTED_MESSAGE;
+    pack->timestamp = getTimeStamp();
+    pack->length = strlen(username);
+    pack->_payload = username;
+    pack->_userName = username;
     return pack;
 }
 
@@ -105,7 +132,7 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
     return serv_addr;
 }
 
-int connectToServer(int portno, char* host)
+int connectToServer(int portno, char* host, char* username)
 {
   bool bTerminate = false;
   int sockfd, n;
@@ -122,12 +149,20 @@ int connectToServer(int portno, char* host)
 
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
         {
-        error("ERROR connecting");
+        printf("ERROR connecting");
         fflush(stdout);
         }
+    
+    packet *pack = createUserConnectedMessage(username);
+    printPacket(pack); 
+    n = write(sockfd,pack,sizeof(pack)); // Envia para o server
+    if (n < 0){
+        printf("ERROR writing connected message");
+        fflush(stdout);
+    }
     while(bTerminate == false)
     {   
-        packet *pack = createMessage(buffer);
+        pack = createUserMessage(buffer,username);
         printPacket(pack);  
         if(strcmp(buffer,"exit") == 0)
         {
@@ -136,7 +171,7 @@ int connectToServer(int portno, char* host)
         }
         else
         {
-            n = write(sockfd,pack->_payload,pack->length); // Envia para o server
+            n = write(sockfd,pack,sizeof(pack)); // Envia para o server
             if (n < 0) 
                 error("ERROR writing to socket");
             bzero(buffer,BUFFER_SIZE);
