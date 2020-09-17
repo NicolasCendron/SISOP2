@@ -40,7 +40,6 @@ void* startListening(void *threadarg)
 
   int portno = my_data->port;
   int sockfd, newsockfd, clilen, n;
-  printf("\n%d",portno);
   char buffer[256];
   struct sockaddr_in serv_addr, cli_addr;
   sockfd = socket(AF_INET, SOCK_STREAM, 0); // Cria socket para escutar um client
