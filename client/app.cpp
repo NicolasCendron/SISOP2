@@ -16,10 +16,10 @@ int main(int argc, char **argv){
     string ip = string(argv[3]);
     string port = string(argv[4]);
 
-    std::cout << "\nuser " + username << std::endl;
-    std::cout << "\ngroup " + groupname << std::endl;
-    std::cout << "\nip " + ip << std::endl;
-    std::cout << "\nport " + port << std::endl;
+    std::cout << "user " + username << std::endl;
+    std::cout << "group " + groupname << std::endl;
+    std::cout << "ip " + ip << std::endl;
+    std::cout << "port " + port << std::endl;
 
     connectToServer(stoi(port),ip,username);
 

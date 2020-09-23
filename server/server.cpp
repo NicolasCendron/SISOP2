@@ -21,7 +21,7 @@ int main(int argc, char **argv){
     {
         td[i].thread_id = i;
 
-        td[i].port = 6000 + i;
+        td[i].port = 7001 + i;
 
         rc = pthread_create(&listeningThreads[i], NULL,
 

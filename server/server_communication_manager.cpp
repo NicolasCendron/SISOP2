@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,17 +33,18 @@ struct thread_data
 };
 char buffer[BUFFER_SIZE] = {0}; 
 void printPacket(packet * pack){
-    printf("\n Packet do Cliente");
-    printf("\n Tipo de Mensagem: %d",pack->nMessageType);
-    printf("\n Texto da mensagem: %s",pack->strPayload);
-    printf("\n Tamanho da mensagem: %d",pack->nLength);
-    printf("\n Timestamp: %f",pack->timestamp);
+  std::cout << "Packet do Cliente" << std::endl;
+  std::cout << "Tipo de Mensagem: " + to_string(pack->nMessageType)  << std::endl;
+  std::cout << "Texto da mensagem: " + pack->strPayload  << std::endl;
+  std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
+  std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
+
 }
 
 int createSocket(){
   int sockfd = socket(AF_INET, SOCK_STREAM, 0); // Cria socket para escutar um client
   if (sockfd < 0)
-    error("ERROR opening socket");
+    std::cout << "ERROR opening socket" << std::endl;
   return sockfd;
 }
 
@@ -57,68 +59,75 @@ struct sockaddr_in prepForListening(int portno){
 
 void bindToSocket(int sockfd,struct sockaddr_in  serv_addr){
   if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) // Faz o bind na porta
-    error("ERROR on binding");
+    std::cout << "ERROR on binding" << std::endl;
 }
 
 void printListeningInfo(int portno){
-    printf("\nServer IP: %s : %d","127.0.0.1",portno);
+    std::cout << string("\n Server IP:") + string("127.0.0.1 : ") + to_string(portno) << std::endl;
     fflush(stdout);
 }
 
 void doNothingWhileListen(int sockfd){
-  printf("Listen");
   listen(sockfd,5); // Escuta a porta até alguem conectar
 }
 
 int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
-  printf("Attempting Connection (Accept)");
   socklen_t clilen = sizeof(cli_addr);
   int newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); //Aceita a conexão
   if (newsockfd < 0)
-    error("ERROR on accept");  
+    std::cout << "ERROR on accept" << std::endl;
+  return newsockfd;
 }
 
 
 string readFromSocket(int newsockfd){
     int n = 0;
     n = read(newsockfd,buffer,PROTOCOL_LENGTH_SIZE);
-    printf("%s",buffer);
     int sizeOfMessage = atoi(buffer);
     bzero(buffer,BUFFER_SIZE);
     n = read(newsockfd,buffer,sizeOfMessage);
-    if (n < 0) error("ERROR reading from socket");
-    printf("%s",buffer);
-    return string(buffer);
+    if (n < 0) 
+      std::cout << "ERROR reading from socket" << std::endl;
+    fflush(stdout);
+    string x = string(buffer);
+    return x;
 }
 
-void handleMessages(int newsockfd)
+int handleMessages(int newsockfd)
 {
 
   packet *pack;
   while(true)
   {
     string message = readFromSocket(newsockfd);
-   
+
+    std::cout << string("*") + message + string("*") << std::endl;
+    fflush(stdout);
+    if(message.empty())
+        return 0;
+      
   }
  
 }
 
 void* startListening(void *threadarg)
-{ 
-  struct thread_data *my_data;   
-  my_data = (struct thread_data *) threadarg;
+{
+  while(true)
+  {
+    struct thread_data *my_data;   
+    my_data = (struct thread_data *) threadarg;
 
-  int portno = my_data->port;
-  int sockfd, newsockfd, clilen;
-  struct sockaddr_in serv_addr, cli_addr;
-  
-  sockfd = createSocket();
-  serv_addr = prepForListening(portno);
-  bindToSocket(sockfd,serv_addr);
-  printListeningInfo(portno);
-  doNothingWhileListen(sockfd);
-  newsockfd = acceptConnection(sockfd, cli_addr);
-  handleMessages(newsockfd);
- 
+    int portno = my_data->port;
+    int sockfd, newsockfd, clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+    
+    sockfd = createSocket();
+    serv_addr = prepForListening(portno);
+    bindToSocket(sockfd,serv_addr);
+    printListeningInfo(portno);
+    doNothingWhileListen(sockfd);
+    newsockfd = acceptConnection(sockfd, cli_addr);
+    handleMessages(newsockfd);
+  }
   pthread_exit(NULL); 
 }

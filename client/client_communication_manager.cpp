@@ -37,9 +37,9 @@
 #define USER_CONNECTED_MESSAGE 1001
 #define PROTOCOL_LENGTH_SIZE 10
 
-string padLeft(string old_string){
+string padLeft(string old_string,char cPad){
     int n_zero = PROTOCOL_LENGTH_SIZE;
-    return std::string(n_zero - old_string.length(), '0') + old_string;
+    return std::string(n_zero - old_string.length(), cPad) + old_string;
 }
 
 string getMessageNameByType(int msgType){
@@ -57,12 +57,19 @@ string getMessageNameByType(int msgType){
 }
 
 void printPacket(packet * pack){
-    std::cout << "\n Packet do Cliente" << std::endl;
-    std::cout << "\n Tipo de Mensagem:" + pack->nMessageType << std::endl;
-    std::cout << "\n Usuário:" + pack->strUserName << std::endl;
-    std::cout << "\n Texto da mensagem:" + pack->strPayload << std::endl;
-    std::cout << "\n Tamanho da mensagem:" + pack->nLength << std::endl;
-    //std::cout << "\n Timestamp:" + pack->timestamp << std::endl;
+    std::cout << "Packet do Cliente" << std::endl;
+    std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
+    std::cout << "Usuário:" + pack->strUserName << std::endl;
+    std::cout << "Texto da mensagem:" + pack->strPayload << std::endl;
+    std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
+    std::cout << "Timestamp:" + to_string(pack->timestamp) << std::endl;
+}
+
+string serializePacket(packet * pack)
+{
+    string serialized;
+    serialized = serialized + padLeft(to_string(pack->nMessageType),'0');
+    serialized = serialized + padLeft(pack->strUserName,' ');
 }
 
 double getTimeStamp()
@@ -70,7 +77,6 @@ double getTimeStamp()
     struct timeval tv;
     gettimeofday(&tv, NULL);
     double time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-    printf("%f",time_in_mill);
     return time_in_mill;
 }
 
@@ -79,12 +85,12 @@ packet* createUserMessage(char* buffer, string username){
     fflush(stdout);
     bzero(buffer,BUFFER_SIZE);
     fgets(buffer,BUFFER_SIZE-1,stdin); // Pega a mensagem
-       
+    buffer[strcspn(buffer, "\r\n")] = 0; // works for LF, CR, CRLF, LFCR
     packet *pack = (packet*)malloc(sizeof(packet));
     pack->nMessageType = USER_MESSAGE;
     pack->timestamp = getTimeStamp();
     pack->nLength = strlen(buffer);
-    pack->strPayload = buffer;
+    pack->strPayload = string(buffer);
     pack->strUserName = username;
     return pack;
 }
@@ -103,7 +109,7 @@ int createSocket(){
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);// Cria Socket
     if (sockfd < 0) 
         {
-            std::cout << "\n ERROR opening socket" << std::endl;
+            std::cout << "ERROR opening socket" << std::endl;
             fflush(stdout);
         }
         return sockfd;
@@ -113,7 +119,7 @@ struct hostent * getServerInfo(string host){
     struct hostent *server;
     server = gethostbyname(host.c_str()); // Pega o endereço do Server
     if (server == NULL) {
-        std::cout << "\n ERROR, no such host" << std::endl;
+        std::cout << "ERROR, no such host" << std::endl;
         fflush(stdout);
         exit(0);
     }
@@ -133,9 +139,7 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
 
 int writeToSocket(int sockfd, string message){
     int    nMessageLength = message.length();
-    string strMessageLength = padLeft(to_string(nMessageLength));
-    std::cout << nMessageLength << std::endl;
-    std::cout << strMessageLength << std::endl;
+    string strMessageLength = padLeft(to_string(nMessageLength),'0');
     int    nMessageLengthSize = strMessageLength.length();
     int n;
     n = write(sockfd,strMessageLength.c_str(),nMessageLengthSize);
@@ -173,8 +177,8 @@ int connectToServer(int portno, string host, string username)
     while(bTerminate == false)
     {   
         
-        //pack = createUserMessage(buffer,username);
-        //printPacket(pack);  
+        packet *pack = createUserMessage(buffer,username);
+        printPacket(pack);  
         if(strcmp(buffer,"exit") == 0)
         {
             printf("terminate");
