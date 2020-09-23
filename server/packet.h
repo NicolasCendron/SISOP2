@@ -1,13 +1,14 @@
-#include<stdint.h>
 
+#include <string>
+using namespace std;
 typedef struct __packet{
-uint16_t type; // Tipo do pacote (p.ex. DATA | CMD)
-uint16_t messageType; // Tipo da mensagem
-uint16_t seqn; // Número de sequência
-uint16_t length; // Comprimento do payload
-double timestamp; // Timestamp do dado
-const char* _payload; // Dados da mensagem
-const char* _userName; // Nome do User
+int nType; // Tipo do pacote (p.ex. DATA | CMD)
+int nMessageType; // Tipo da mensagem
+int nSeq; // Número de sequência
+int nLength; // Comprimento do payload
+float timestamp; // Timestamp do dado
+string strPayload; // Dados da mensagem
+string strUserName; // Nome do User
 } packet;
 
 

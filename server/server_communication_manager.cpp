@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "headers/server_communication_manager.h"
 #include "packet.h"
+#include <arpa/inet.h>
 void error(char *msg)
 {
   perror(msg);
@@ -21,23 +22,20 @@ void error(char *msg)
 //   char    sin_zero[8]; /* Not used, must be zero */
 // };
 
-typedef int bool;
-#define true 1
-#define false 0
 #define BUFFER_SIZE 2560
-#define USER_MESSAGE 1000
-
+#define USER_MESSAGE_TYPE 1000
+#define PROTOCOL_LENGTH_SIZE 10
 struct thread_data
 {
   int thread_id;
   int port;
 };
-
+char buffer[BUFFER_SIZE] = {0}; 
 void printPacket(packet * pack){
     printf("\n Packet do Cliente");
-    printf("\n Tipo de Mensagem: %d",pack->messageType);
-    printf("\n Texto da mensagem: %s",pack->_payload);
-    printf("\n Tamanho da mensagem: %d",pack->length);
+    printf("\n Tipo de Mensagem: %d",pack->nMessageType);
+    printf("\n Texto da mensagem: %s",pack->strPayload);
+    printf("\n Tamanho da mensagem: %d",pack->nLength);
     printf("\n Timestamp: %f",pack->timestamp);
 }
 
@@ -62,37 +60,45 @@ void bindToSocket(int sockfd,struct sockaddr_in  serv_addr){
     error("ERROR on binding");
 }
 
-void printListeningInfo(portno){
+void printListeningInfo(int portno){
     printf("\nServer IP: %s : %d","127.0.0.1",portno);
     fflush(stdout);
 }
 
 void doNothingWhileListen(int sockfd){
+  printf("Listen");
   listen(sockfd,5); // Escuta a porta até alguem conectar
 }
 
 int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
-  int clilen = sizeof(cli_addr);
+  printf("Attempting Connection (Accept)");
+  socklen_t clilen = sizeof(cli_addr);
   int newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); //Aceita a conexão
   if (newsockfd < 0)
     error("ERROR on accept");  
-  
+}
+
+
+string readFromSocket(int newsockfd){
+    int n = 0;
+    n = read(newsockfd,buffer,PROTOCOL_LENGTH_SIZE);
+    printf("%s",buffer);
+    int sizeOfMessage = atoi(buffer);
+    bzero(buffer,BUFFER_SIZE);
+    n = read(newsockfd,buffer,sizeOfMessage);
+    if (n < 0) error("ERROR reading from socket");
+    printf("%s",buffer);
+    return string(buffer);
 }
 
 void handleMessages(int newsockfd)
 {
-  int n = 0;
+
   packet *pack;
   while(true)
   {
-    pack = (packet*)malloc(sizeof(packet));
-    //bzero(buffer,BUFFER_SIZE);
-    n = read(newsockfd,&pack,sizeof(pack));
-    if (n < 0) error("ERROR reading from socket");
-    printPacket(pack);
-    //n = write(newsockfd,"message_here",18);
-    //if (n < 0) error("ERROR writing to socket");
-    //free(&pack);
+    string message = readFromSocket(newsockfd);
+   
   }
  
 }
