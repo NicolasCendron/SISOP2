@@ -35,6 +35,8 @@
 #define BUFFER_SIZE 2560
 #define USER_MESSAGE 1000
 #define USER_CONNECTED_MESSAGE 1001
+#define USER_DISCONNECTED 1002
+#define USER_EXIT_GROUP 1003
 #define PROTOCOL_LENGTH_SIZE 10
 
 string padLeft(string old_string,char cPad){
@@ -50,6 +52,10 @@ string getMessageNameByType(int msgType){
             return string("Mensagem de Texto");
         case USER_CONNECTED_MESSAGE:
             return string("Usuário Conectado");
+        case USER_DISCONNECTED:
+            return string("Usuário Desconectou");
+        case USER_EXIT_GROUP:
+            return string("Usuário saiu do grupo");
         default:
             return string("");
         }
@@ -57,12 +63,13 @@ string getMessageNameByType(int msgType){
 }
 
 void printPacket(packet * pack){
-    std::cout << "Packet do Cliente" << std::endl;
-    std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
+    
+    //std::cout << "Packet do Cliente" << std::endl;
+    //std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
     std::cout << "Usuário:" + pack->strUserName << std::endl;
     std::cout << "Texto da mensagem:" + pack->strPayload << std::endl;
-    std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
-    std::cout << "Timestamp:" + to_string(pack->timestamp) << std::endl;
+    //std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
+    //std::cout << "Timestamp:" + to_string(pack->timestamp) << std::endl;
 }
 
 string serializePacket(packet * pack)

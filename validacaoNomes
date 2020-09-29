@@ -1,0 +1,18 @@
+cd /home/carine/Documentos/2020.01/SISOP_II/SISOP2
+cd client
+
+
+// validar os nomes
+
+./app p group 127.0.0.1 7003 // Err: Invalid length
+./app 2aq group 127.0.0.1 7003 // Err: Invalid length
+./app 2user grooup 127.0.0.1 7003 // Err: First caracter must be a letter 
+./app 2us grooup 127.0.0.1 7003 // Err: First caracter must be a letter 
+				// Err: Invalid length
+./app 2us groooooooooooooooooooooooooup 127.0.0.1 7003 // Err: Invalid length (must be greater than 4 characters)
+							// Err: First caracter must be a letter 
+							// Err: Invalid length (must be less than 20 characters)				
+./app carine.bb group 127.0.0.1 7003 // OK
+./app carine.b? group 127.0.0.1 7003 //Err: Invalid name (must be without ?)
+
+
