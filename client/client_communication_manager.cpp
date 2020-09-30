@@ -91,14 +91,17 @@ packet* createUserMessage(char* buffer, string username){
     printf("\nPlease enter the message: ");
     fflush(stdout);
     bzero(buffer,BUFFER_SIZE);
-    fgets(buffer,BUFFER_SIZE-1,stdin); // Pega a mensagem
-    buffer[strcspn(buffer, "\r\n")] = 0; // works for LF, CR, CRLF, LFCR
+    string strUserMessage;
+    getline(cin,strUserMessage); // Pega a mensagem
     packet *pack = (packet*)malloc(sizeof(packet));
+
     pack->nMessageType = USER_MESSAGE;
-    pack->timestamp = getTimeStamp();
-    pack->nLength = strlen(buffer);
-    pack->strPayload = string(buffer);
-    pack->strUserName = username;
+    //pack->timestamp = getTimeStamp();
+    pack->nLength = strUserMessage.length();
+    //pack->strPayload =  buffer;
+    pack->strUserName = strUserMessage;
+    printf("fim");
+    fflush(stdout);
     return pack;
 }
 
@@ -185,7 +188,7 @@ int connectToServer(int portno, string host, string username)
     {   
         
         packet *pack = createUserMessage(buffer,username);
-        printPacket(pack);  
+        //printPacket(pack);  
         if(strcmp(buffer,"exit") == 0)
         {
             printf("terminate");
@@ -195,9 +198,7 @@ int connectToServer(int portno, string host, string username)
         {  
             strMessageContent = string("USER-MESSAGE");
             writeToSocket(sockfd,strMessageContent);
-            n = read(sockfd,buffer,BUFFER_SIZE); // Pega a resposta do server
-            if (n < 0)
-                std::cout << "\nERROR reading from socket" << std::endl; 
+           
         }
     }
     close(sockfd);

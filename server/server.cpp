@@ -23,9 +23,7 @@ int main(int argc, char **argv){
 
         td[i].port = 7001 + i;
 
-        rc = pthread_create(&listeningThreads[i], NULL,
-
-                            startListening, (void *)&td[i]);
+        rc = pthread_create(&listeningThreads[i], NULL, startListening, (void *)&td[i]);
 
         if (rc){
 
