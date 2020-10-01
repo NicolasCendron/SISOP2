@@ -9,6 +9,10 @@
 #include "headers/server_communication_manager.h"
 #include "packet.h"
 #include <arpa/inet.h>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
+#include <sstream>
 void error(char *msg)
 {
   perror(msg);
@@ -24,8 +28,13 @@ void error(char *msg)
 // };
 
 #define BUFFER_SIZE 2560
-#define USER_MESSAGE_TYPE 1000
-#define PROTOCOL_LENGTH_SIZE 10
+#define USER_MESSAGE 1000
+#define USER_CONNECTED_MESSAGE 1001
+#define USER_DISCONNECTED 1002
+#define USER_EXIT_GROUP 1003
+#define PROTOCOL_INT_SIZE 10
+#define PROTOCOL_STRING_SIZE 140
+#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
 struct thread_data
 {
   int thread_id;
@@ -33,11 +42,12 @@ struct thread_data
 };
 char buffer[BUFFER_SIZE] = {0}; 
 void printPacket(packet * pack){
-  std::cout << "Packet do Cliente" << std::endl;
+  std::cout << "\nPacket do Cliente" << std::endl;
   std::cout << "Tipo de Mensagem: " + to_string(pack->nMessageType)  << std::endl;
   std::cout << "Texto da mensagem: " + pack->strPayload  << std::endl;
+  std::cout << "Nome Usuário: " + pack->strUserName  << std::endl;
   std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
-  std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
+  //std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
 
 }
 
@@ -46,6 +56,13 @@ int createSocket(){
   if (sockfd < 0)
     std::cout << "ERROR opening socket" << std::endl;
   return sockfd;
+}
+
+// trim from start (in place)
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
 }
 
 struct sockaddr_in prepForListening(int portno){
@@ -79,18 +96,34 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
   return newsockfd;
 }
 
+packet* deserializePacket(string strPack)
+{   int nPointer = 0;
+    packet *pack = (packet*)malloc(sizeof(packet));
+    string strBuff;
+    fflush(stdout);
+    // nPointer+=PROTOCOL_INT_SIZE;
+    // nPointer+=PROTOCOL_INT_SIZE;
+    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nMessageType = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
+    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nLength = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
+    
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nLength; nPointer+=PROTOCOL_INT_SIZE;
+    pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE; 
+    return pack;
+}
 
-string readFromSocket(int newsockfd){
-    int n = 0;
-    n = read(newsockfd,buffer,PROTOCOL_LENGTH_SIZE);
-    int sizeOfMessage = atoi(buffer);
-    bzero(buffer,BUFFER_SIZE);
-    n = read(newsockfd,buffer,sizeOfMessage);
+packet* readFromSocket(int newsockfd){
+    char * buffer = (char*)malloc(PROTOCOL_PACKET_SIZE);
+    int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
     if (n < 0) 
       std::cout << "ERROR reading from socket" << std::endl;
+  
     fflush(stdout);
-    string x = string(buffer);
-    return x;
+    
+    packet * pack = deserializePacket(string(buffer));
+    printPacket(pack);
+    return pack;
 }
 
 int handleMessages(int newsockfd)
@@ -99,12 +132,9 @@ int handleMessages(int newsockfd)
   packet *pack;
   while(true)
   {
-    string message = readFromSocket(newsockfd);
-
-    std::cout << string("*") + message + string("*") << std::endl;
+    pack = readFromSocket(newsockfd);
     fflush(stdout);
-    if(message.empty())
-        return 0;
+
       
   }
  

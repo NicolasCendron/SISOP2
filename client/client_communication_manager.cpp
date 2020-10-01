@@ -37,11 +37,13 @@
 #define USER_CONNECTED_MESSAGE 1001
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
-#define PROTOCOL_LENGTH_SIZE 10
+#define PROTOCOL_INT_SIZE 10
+#define PROTOCOL_STRING_SIZE 140
+#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
 
-string padLeft(string old_string,char cPad){
-    int n_zero = PROTOCOL_LENGTH_SIZE;
-    return std::string(n_zero - old_string.length(), cPad) + old_string;
+
+string padLeft(string strOld,char cPad,int nSize){
+    return std::string(nSize - strOld.length(), cPad) + strOld;
 }
 
 string getMessageNameByType(int msgType){
@@ -62,10 +64,12 @@ string getMessageNameByType(int msgType){
     
 }
 
+
+
 void printPacket(packet * pack){
     
-    //std::cout << "Packet do Cliente" << std::endl;
-    //std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
+    std::cout << "Packet do Cliente" << std::endl;
+    std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
     std::cout << "Usuário:" + pack->strUserName << std::endl;
     std::cout << "Texto da mensagem:" + pack->strPayload << std::endl;
     //std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
@@ -75,8 +79,11 @@ void printPacket(packet * pack){
 string serializePacket(packet * pack)
 {
     string serialized;
-    serialized = serialized + padLeft(to_string(pack->nMessageType),'0');
-    serialized = serialized + padLeft(pack->strUserName,' ');
+    serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
+    serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
+    return serialized;
 }
 
 double getTimeStamp()
@@ -87,32 +94,35 @@ double getTimeStamp()
     return time_in_mill;
 }
 
-packet* createUserMessage(char* buffer, string username){
+string createUserMessage(string strUserName){
+    char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
     printf("\nPlease enter the message: ");
     fflush(stdout);
-    bzero(buffer,BUFFER_SIZE);
+    //bzero(buffer,BUFFER_SIZE);
     string strUserMessage;
     getline(cin,strUserMessage); // Pega a mensagem
+
     packet *pack = (packet*)malloc(sizeof(packet));
 
     pack->nMessageType = USER_MESSAGE;
-    //pack->timestamp = getTimeStamp();
     pack->nLength = strUserMessage.length();
-    //pack->strPayload =  buffer;
-    pack->strUserName = strUserMessage;
-    printf("fim");
+    pack->strPayload =  strUserMessage;
+    pack->strUserName = strUserName + "";
+    printf("\n%s ",strUserMessage.c_str());
     fflush(stdout);
-    return pack;
+    return serializePacket(pack);
 }
 
-packet* createUserConnectedMessage(string username){
+string createUserConnectedMessage(string strUserName){
+
     packet *pack = (packet*)malloc(sizeof(packet));
     pack->nMessageType = USER_CONNECTED_MESSAGE;
-    pack->timestamp = getTimeStamp();
-    pack->nLength = username.size();
-    pack->strPayload = username;
-    pack->strUserName = username;
-    return pack;
+    //pack->timestamp = getTimeStamp();
+    pack->nLength = strUserName.length();
+    pack->strPayload = "";
+    pack->strUserName = strUserName;
+      
+    return serializePacket(pack);
 }
 
 int createSocket(){
@@ -148,11 +158,9 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
 }
 
 int writeToSocket(int sockfd, string message){
-    int    nMessageLength = message.length();
-    string strMessageLength = padLeft(to_string(nMessageLength),'0');
-    int    nMessageLengthSize = strMessageLength.length();
+     fflush(stdin);
+    int nMessageLength = message.length();
     int n;
-    n = write(sockfd,strMessageLength.c_str(),nMessageLengthSize);
     n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
     if (n < 0){
         std::cout << "\nERROR writing connected message" << std::endl;
@@ -161,8 +169,9 @@ int writeToSocket(int sockfd, string message){
 }
 
 
-int connectToServer(int portno, string host, string username)
+int connectToServer(int portno, string host, string strUserName)
 {
+  
   bool bTerminate = false;
   int sockfd, n;
     struct sockaddr_in serv_addr;
@@ -179,16 +188,11 @@ int connectToServer(int portno, string host, string username)
         std::cout << "\n ERROR connecting" << std::endl;
         fflush(stdout);
         }
-    //packet *pack = createUserConnectedMessage(username);
-    //printPacket(pack); 
-    strMessageContent = string("USER-CONNECTED");
-    writeToSocket(sockfd,strMessageContent);
+   
+    writeToSocket(sockfd,createUserConnectedMessage(strUserName));
  
     while(bTerminate == false)
     {   
-        
-        packet *pack = createUserMessage(buffer,username);
-        //printPacket(pack);  
         if(strcmp(buffer,"exit") == 0)
         {
             printf("terminate");
@@ -196,8 +200,8 @@ int connectToServer(int portno, string host, string username)
         }
         else
         {  
-            strMessageContent = string("USER-MESSAGE");
-            writeToSocket(sockfd,strMessageContent);
+
+            //writeToSocket(sockfd,createUserMessage(strUserName));
            
         }
     }
