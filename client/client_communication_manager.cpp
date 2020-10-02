@@ -83,6 +83,7 @@ string serializePacket(packet * pack)
     serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
     serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
     serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
+    std::cout << "**" +  serialized + "&&" << std::endl;
     return serialized;
 }
 
@@ -98,31 +99,29 @@ string createUserMessage(string strUserName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
     printf("\nPlease enter the message: ");
     fflush(stdout);
-    //bzero(buffer,BUFFER_SIZE);
     string strUserMessage;
     getline(cin,strUserMessage); // Pega a mensagem
 
-    packet *pack = (packet*)malloc(sizeof(packet));
+    packet *pack = new packet;
 
     pack->nMessageType = USER_MESSAGE;
     pack->nLength = strUserMessage.length();
     pack->strPayload =  strUserMessage;
-    pack->strUserName = strUserName + "";
-    printf("\n%s ",strUserMessage.c_str());
-    fflush(stdout);
+    pack->strUserName = strUserName;
+
     return serializePacket(pack);
 }
 
 string createUserConnectedMessage(string strUserName){
 
-    packet *pack = (packet*)malloc(sizeof(packet));
+    packet *pack = new packet;
     pack->nMessageType = USER_CONNECTED_MESSAGE;
     //pack->timestamp = getTimeStamp();
     pack->nLength = strUserName.length();
-    pack->strPayload = "";
     pack->strUserName = strUserName;
-      
-    return serializePacket(pack);
+    pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
+
+    return  serializePacket(pack);
 }
 
 int createSocket(){
@@ -188,7 +187,7 @@ int connectToServer(int portno, string host, string strUserName)
         std::cout << "\n ERROR connecting" << std::endl;
         fflush(stdout);
         }
-   
+        
     writeToSocket(sockfd,createUserConnectedMessage(strUserName));
  
     while(bTerminate == false)
@@ -201,7 +200,7 @@ int connectToServer(int portno, string host, string strUserName)
         else
         {  
 
-            //writeToSocket(sockfd,createUserMessage(strUserName));
+            writeToSocket(sockfd,createUserMessage(strUserName));
            
         }
     }

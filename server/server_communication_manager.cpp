@@ -98,7 +98,7 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
 
 packet* deserializePacket(string strPack)
 {   int nPointer = 0;
-    packet *pack = (packet*)malloc(sizeof(packet));
+    packet *pack = new packet;
     string strBuff;
     fflush(stdout);
     // nPointer+=PROTOCOL_INT_SIZE;
