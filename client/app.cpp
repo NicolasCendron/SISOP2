@@ -54,7 +54,7 @@ int main(int argc, char **argv){
     std::cout << "ip: " + ip << std::endl;
     std::cout << "port: " + port << std::endl;
 
-    connectToServer(stoi(port),ip,username);
+    connectToServer(stoi(port),ip,username,groupname);
 
     
 }

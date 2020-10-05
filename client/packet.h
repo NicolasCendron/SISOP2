@@ -9,6 +9,7 @@ int nLength; // Comprimento do payload
 double timestamp; // Timestamp do dado
 string strPayload; // Dados da mensagem
 string strUserName; // Nome do User
+string strGroupName; //Nome do Group
 } packet;
 
 

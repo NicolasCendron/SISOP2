@@ -13,6 +13,8 @@
 #include <cctype>
 #include <locale>
 #include <sstream>
+#include <fstream>
+#include <vector>
 void error(char *msg)
 {
   perror(msg);
@@ -34,7 +36,7 @@ void error(char *msg)
 #define USER_EXIT_GROUP 1003
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
-#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
+#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
 struct thread_data
 {
   int thread_id;
@@ -46,7 +48,8 @@ void printPacket(packet * pack){
   std::cout << "Tipo de Mensagem: " + to_string(pack->nMessageType)  << std::endl;
   std::cout << "Texto da mensagem: " + pack->strPayload  << std::endl;
   std::cout << "Nome Usuário: " + pack->strUserName  << std::endl;
-  std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
+  std::cout << "Nome Grupo: " + pack->strGroupName  << std::endl;
+  //std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
   //std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
 
 }
@@ -57,6 +60,8 @@ int createSocket(){
     std::cout << "ERROR opening socket" << std::endl;
   return sockfd;
 }
+
+vector<packet> vecPackets;
 
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
@@ -96,20 +101,32 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
   return newsockfd;
 }
 
+string padLeft(string strOld,char cPad,int nSize){
+    return std::string(nSize - strOld.length(), cPad) + strOld;
+}
+
+string serializePacket(packet * pack)
+{
+    string serialized;
+    serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
+    serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
+    serialized = serialized + padLeft(pack->strGroupName,' ',PROTOCOL_STRING_SIZE);
+    //std::cout << "**" +  serialized + "&&" << std::endl;
+    return serialized;
+}
+
 packet* deserializePacket(string strPack)
 {   int nPointer = 0;
     packet *pack = new packet;
     string strBuff;
-    fflush(stdout);
-    // nPointer+=PROTOCOL_INT_SIZE;
-    // nPointer+=PROTOCOL_INT_SIZE;
-    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nMessageType = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
-    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nLength = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
-    
+
     std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
     std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nLength; nPointer+=PROTOCOL_INT_SIZE;
     pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
-    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE; 
+    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
     return pack;
 }
 
@@ -122,8 +139,15 @@ packet* readFromSocket(int newsockfd){
     fflush(stdout);
     
     packet * pack = deserializePacket(string(buffer));
-    printPacket(pack);
+    //printPacket(pack);
     return pack;
+}
+
+
+void writeMessageToFile(packet *pack){
+    std::ofstream outfile;
+    outfile.open(pack->strGroupName, std::ios_base::app); // append instead of overwrite
+    outfile << serializePacket(pack);
 }
 
 int handleMessages(int newsockfd)
@@ -133,15 +157,36 @@ int handleMessages(int newsockfd)
   while(true)
   {
     pack = readFromSocket(newsockfd);
-    fflush(stdout);
+  
+    switch(pack -> nMessageType){
+      case USER_MESSAGE:
+        writeMessageToFile(pack);
+        break;
+    }
 
-      
+
   }
  
 }
 
+
+void readEntireFile(){
+  ifstream file("group");
+  char buffer[PROTOCOL_PACKET_SIZE + 1];
+  
+  while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE))
+  {
+    printPacket(deserializePacket(string(buffer)));
+  }
+                // terminated for use with cout.
+}
+
+
 void* startListening(void *threadarg)
 {
+  //readEntireFile();
+  //return (void*)1;
+
   while(true)
   {
     struct thread_data *my_data;   

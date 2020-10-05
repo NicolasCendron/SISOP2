@@ -39,7 +39,7 @@
 #define USER_EXIT_GROUP 1003
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
-#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
+#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
 
 
 string padLeft(string strOld,char cPad,int nSize){
@@ -72,6 +72,7 @@ void printPacket(packet * pack){
     std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
     std::cout << "Usuário:" + pack->strUserName << std::endl;
     std::cout << "Texto da mensagem:" + pack->strPayload << std::endl;
+    std::cout << "Nome do Grupo:" + pack->strGroupName << std::endl;
     //std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
     //std::cout << "Timestamp:" + to_string(pack->timestamp) << std::endl;
 }
@@ -83,7 +84,8 @@ string serializePacket(packet * pack)
     serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
     serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
     serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
-    std::cout << "**" +  serialized + "&&" << std::endl;
+    serialized = serialized + padLeft(pack->strGroupName,' ',PROTOCOL_STRING_SIZE);
+    //std::cout << "**" +  serialized + "&&" << std::endl;
     return serialized;
 }
 
@@ -95,7 +97,7 @@ double getTimeStamp()
     return time_in_mill;
 }
 
-string createUserMessage(string strUserName){
+string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
     printf("\nPlease enter the message: ");
     fflush(stdout);
@@ -108,11 +110,11 @@ string createUserMessage(string strUserName){
     pack->nLength = strUserMessage.length();
     pack->strPayload =  strUserMessage;
     pack->strUserName = strUserName;
-
+    pack->strGroupName = strGroupName;
     return serializePacket(pack);
 }
 
-string createUserConnectedMessage(string strUserName){
+string createUserConnectedMessage(string strUserName, string strGroupName){
 
     packet *pack = new packet;
     pack->nMessageType = USER_CONNECTED_MESSAGE;
@@ -120,6 +122,7 @@ string createUserConnectedMessage(string strUserName){
     pack->nLength = strUserName.length();
     pack->strUserName = strUserName;
     pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
+    pack->strGroupName = strGroupName;
 
     return  serializePacket(pack);
 }
@@ -168,9 +171,8 @@ int writeToSocket(int sockfd, string message){
 }
 
 
-int connectToServer(int portno, string host, string strUserName)
+int connectToServer(int portno, string host, string strUserName, string strGroupName)
 {
-  
   bool bTerminate = false;
   int sockfd, n;
     struct sockaddr_in serv_addr;
@@ -188,7 +190,7 @@ int connectToServer(int portno, string host, string strUserName)
         fflush(stdout);
         }
         
-    writeToSocket(sockfd,createUserConnectedMessage(strUserName));
+    writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
  
     while(bTerminate == false)
     {   
@@ -200,7 +202,7 @@ int connectToServer(int portno, string host, string strUserName)
         else
         {  
 
-            writeToSocket(sockfd,createUserMessage(strUserName));
+            writeToSocket(sockfd,createUserMessage(strUserName,strGroupName));
            
         }
     }
