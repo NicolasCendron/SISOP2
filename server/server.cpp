@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "headers/server_communication_manager.h"
-#define NUM_THREADS 1
+#define NUM_THREADS 3
 
 struct thread_data
 {

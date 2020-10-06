@@ -45,6 +45,7 @@
 #define USER_CONNECTED_MESSAGE 1001
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
+#define USER_MAX_CONNECTIONS 1004
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
@@ -67,45 +68,6 @@ static inline void ltrim(std::string &s) {
         return !std::isspace(ch);
     }));
 }
-
-char getch(void)
-{
-    char buf = 0;
-    struct termios old = {0};
-    fflush(stdout);
-    if(tcgetattr(0, &old) < 0)
-        perror("tcsetattr()");
-    old.c_lflag &= ~ICANON;
-    old.c_lflag &= ~ECHO;
-    old.c_cc[VMIN] = 1;
-    old.c_cc[VTIME] = 0;
-    if(tcsetattr(0, TCSANOW, &old) < 0)
-        perror("tcsetattr ICANON");
-    if(read(0, &buf, 1) < 0)
-        perror("read()");
-    old.c_lflag |= ICANON;
-    old.c_lflag |= ECHO;
-    if(tcsetattr(0, TCSADRAIN, &old) < 0)
-        perror("tcsetattr ~ICANON");
-    //printf("%c\n", buf);
-    return buf;
- }
-
- string getString(){
-     string s;
-     char c;
-     
-     while(true)
-     {
-         c = getch();
-         if(c != '\r' && c != '\n')
-            break;
-         s.push_back(c);   
-     }
-
- }
-
-
 
 string getMessageNameByType(int msgType){
 
@@ -174,7 +136,7 @@ string createUserMessage(string strUserName,string strGroupName){
     printf(" >>>> ");
     fflush(stdout);
     string strUserMessage;
-    strUserMessage = getline(cin,strUserMessage); // Pega a mensagem
+    getline(cin,strUserMessage); // Pega a mensagem
 
     packet *pack = new packet;
 
@@ -255,6 +217,23 @@ packet* readFromSocket(int newsockfd){
     return pack;
 }
 
+void handleMessages(packet *pack)
+{
+
+    if (pack->nMessageType == USER_MAX_CONNECTIONS){
+        clear();
+        cout << "Não foi possivel estabelecer Conexão pois o limite de Conexões foi atingido ou você já está conectado neste Grupo" << endl;
+        return;
+    }
+
+    if(pack->strUserName.compare(pack->strPayload) == 0 ){
+            cout << "** " + pack->strUserName  + " Entrou no Chat **" << endl;
+            return;
+        }
+    cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
+    fflush(stdout);
+}
+
 
 void* listenForNewMessages(void *threadarg){
     int i = 1;
@@ -263,12 +242,8 @@ void* listenForNewMessages(void *threadarg){
     while(true){   
      if(SOCKET_ID != 0){
         packet *pack  = readFromSocket(SOCKET_ID);
-        if(pack->strUserName.compare(pack->strPayload) == 0 ){
-            cout << "** " + pack->strUserName  + " Entrou no Chat **" << endl;
-        }
-        cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
-
-        fflush(stdout);
+        handleMessages(pack);
+        
      }
     }
 }

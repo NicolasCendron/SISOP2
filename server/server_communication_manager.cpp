@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "headers/server_communication_manager.h"
-#include "packet.h"
+#include "headers/packet.h"
+#include "headers/connection.h"
 #include <arpa/inet.h>
 #include <algorithm> 
 #include <cctype>
@@ -34,6 +35,7 @@ void error(char *msg)
 #define USER_CONNECTED_MESSAGE 1001
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
+#define USER_MAX_CONNECTIONS 1004
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
@@ -61,7 +63,7 @@ int createSocket(){
   return sockfd;
 }
 
-vector<packet> vecPackets;
+vector<connection*> arrConnection;
 
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
@@ -173,6 +175,12 @@ vector<packet*> readEntireFile(string strGroupName){
   return arrPacks;
 }
 
+void sendConnectionFailedMessage(packet *pack, int newsockfd)
+{
+  pack-> nMessageType = USER_MAX_CONNECTIONS;
+  writeToSocket(newsockfd,serializePacket(pack));
+}
+
 void sendMessageHistoryToClient(string strGroupName, int newsockfd){
   vector<packet*> arrPacks = readEntireFile(strGroupName);
   for(auto pack: arrPacks){ 
@@ -181,10 +189,41 @@ void sendMessageHistoryToClient(string strGroupName, int newsockfd){
 
 }
 
+bool handleUserConnection(packet *pack, int newsockfd)
+{
+  string strUserName = pack->strUserName;
+  string strGroupName = pack->strGroupName;
+  int nSocket = newsockfd;
+ 
+  int nCountUserConnections = 1;
+  for(auto connection: arrConnection){ 
+	  if(pack->strUserName.compare(connection->strUserName) == 0 ){
+      nCountUserConnections++;
+      if(pack->strGroupName.compare(connection->strGroupName) == 0){
+        nCountUserConnections+=10;
+      }
+    }
+  }  
+  cout << nCountUserConnections <<endl;
+  if(nCountUserConnections > 2){
+    return false;
+  }
+
+  connection *oConn = new connection;
+  oConn->strUserName = strUserName;
+  oConn->strGroupName = strGroupName;
+  oConn->nSocket = newsockfd;
+
+  arrConnection.push_back(oConn);
+
+  return true;
+}
+
 int handleMessages(int newsockfd)
 {
 
   packet *pack;
+  bool bConnectionSuccess = true;
   while(true)
   {
     pack = readFromSocket(newsockfd);
@@ -194,8 +233,15 @@ int handleMessages(int newsockfd)
         writeMessageToFile(pack);
         break;
       case USER_CONNECTED_MESSAGE:
-        writeMessageToFile(pack);
-        sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+        bConnectionSuccess = handleUserConnection(pack, newsockfd);
+        if(bConnectionSuccess)
+        {
+          writeMessageToFile(pack);
+          sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+        }
+        else{
+          sendConnectionFailedMessage(pack,newsockfd);
+        }
         break;
     }
     printPacket(pack);
