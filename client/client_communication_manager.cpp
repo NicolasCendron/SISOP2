@@ -11,6 +11,14 @@
 #include <inttypes.h>
 #include <math.h>
 #include "packet.h"
+#include <sstream>
+#include <ctime>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
+#include <unistd.h>
+#include <termios.h>
+
 
 // struct  hostent
 // {
@@ -41,10 +49,63 @@
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
 
+// ESC-H, ESC-J (I remember using this sequence on VTs)
+#define clear() printf("\033[H\033[J")
+
+//ESC-BRACK-column;row (same here, used on terminals on an early intranet)
+#define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
+
+int SOCKET_ID = 0;
 
 string padLeft(string strOld,char cPad,int nSize){
     return std::string(nSize - strOld.length(), cPad) + strOld;
 }
+
+// trim from start (in place)
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+char getch(void)
+{
+    char buf = 0;
+    struct termios old = {0};
+    fflush(stdout);
+    if(tcgetattr(0, &old) < 0)
+        perror("tcsetattr()");
+    old.c_lflag &= ~ICANON;
+    old.c_lflag &= ~ECHO;
+    old.c_cc[VMIN] = 1;
+    old.c_cc[VTIME] = 0;
+    if(tcsetattr(0, TCSANOW, &old) < 0)
+        perror("tcsetattr ICANON");
+    if(read(0, &buf, 1) < 0)
+        perror("read()");
+    old.c_lflag |= ICANON;
+    old.c_lflag |= ECHO;
+    if(tcsetattr(0, TCSADRAIN, &old) < 0)
+        perror("tcsetattr ~ICANON");
+    //printf("%c\n", buf);
+    return buf;
+ }
+
+ string getString(){
+     string s;
+     char c;
+     
+     while(true)
+     {
+         c = getch();
+         if(c != '\r' && c != '\n')
+            break;
+         s.push_back(c);   
+     }
+
+ }
+
+
 
 string getMessageNameByType(int msgType){
 
@@ -63,8 +124,6 @@ string getMessageNameByType(int msgType){
         }
     
 }
-
-
 
 void printPacket(packet * pack){
     
@@ -89,6 +148,19 @@ string serializePacket(packet * pack)
     return serialized;
 }
 
+packet* deserializePacket(string strPack)
+{   int nPointer = 0;
+    packet *pack = new packet;
+    string strBuff;
+
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nLength; nPointer+=PROTOCOL_INT_SIZE;
+    pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
+    return pack;
+}
+
 double getTimeStamp()
 {
     struct timeval tv;
@@ -99,10 +171,10 @@ double getTimeStamp()
 
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
-    printf("\nPlease enter the message: ");
+    printf(" >>>> ");
     fflush(stdout);
     string strUserMessage;
-    getline(cin,strUserMessage); // Pega a mensagem
+    strUserMessage = getline(cin,strUserMessage); // Pega a mensagem
 
     packet *pack = new packet;
 
@@ -170,6 +242,36 @@ int writeToSocket(int sockfd, string message){
     }
 }
 
+packet* readFromSocket(int newsockfd){
+    char * buffer = (char*)malloc(PROTOCOL_PACKET_SIZE);
+    int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
+    if (n < 0) 
+      std::cout << "ERROR reading from socket" << std::endl;
+  
+    fflush(stdout);
+    
+    packet * pack = deserializePacket(string(buffer));
+   
+    return pack;
+}
+
+
+void* listenForNewMessages(void *threadarg){
+    int i = 1;
+    clear();
+    gotoxy(1,1);
+    while(true){   
+     if(SOCKET_ID != 0){
+        packet *pack  = readFromSocket(SOCKET_ID);
+        if(pack->strUserName.compare(pack->strPayload) == 0 ){
+            cout << "** " + pack->strUserName  + " Entrou no Chat **" << endl;
+        }
+        cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
+
+        fflush(stdout);
+     }
+    }
+}
 
 int connectToServer(int portno, string host, string strUserName, string strGroupName)
 {
@@ -183,7 +285,7 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
     sockfd = createSocket();
     server = getServerInfo(host);
     serv_addr = prepServerConnection(server,portno);
-
+    SOCKET_ID = sockfd;
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
         {
         std::cout << "\n ERROR connecting" << std::endl;
@@ -201,9 +303,7 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         }
         else
         {  
-
-            writeToSocket(sockfd,createUserMessage(strUserName,strGroupName));
-           
+            writeToSocket(sockfd,createUserMessage(strUserName,strGroupName)); 
         }
     }
     close(sockfd);

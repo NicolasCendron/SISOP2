@@ -45,6 +45,7 @@
         "iterator": "cpp",
         "numeric": "cpp",
         "random": "cpp",
-        "ctime": "cpp"
+        "ctime": "cpp",
+        "list": "cpp"
     }
 }

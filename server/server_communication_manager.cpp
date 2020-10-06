@@ -139,15 +139,46 @@ packet* readFromSocket(int newsockfd){
     fflush(stdout);
     
     packet * pack = deserializePacket(string(buffer));
-    //printPacket(pack);
+   
     return pack;
 }
-
+int writeToSocket(int sockfd, string message){
+     fflush(stdin);
+    int nMessageLength = message.length();
+    int n;
+    n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
+    if (n < 0){
+        std::cout << "\nERROR writing connected message" << std::endl;
+        fflush(stdout);
+    }
+}
 
 void writeMessageToFile(packet *pack){
     std::ofstream outfile;
     outfile.open(pack->strGroupName, std::ios_base::app); // append instead of overwrite
     outfile << serializePacket(pack);
+}
+
+vector<packet*> readEntireFile(string strGroupName){
+  ifstream file(strGroupName.c_str());
+  char buffer[PROTOCOL_PACKET_SIZE + 1];
+  vector<packet*> arrPacks;
+  packet *pack = new packet();
+  while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE))
+  {
+    pack = deserializePacket(string(buffer));
+    printPacket(pack);
+    arrPacks.push_back(pack);
+  }
+  return arrPacks;
+}
+
+void sendMessageHistoryToClient(string strGroupName, int newsockfd){
+  vector<packet*> arrPacks = readEntireFile(strGroupName);
+  for(auto pack: arrPacks){ 
+	  writeToSocket(newsockfd,serializePacket(pack));
+  } 
+
 }
 
 int handleMessages(int newsockfd)
@@ -162,29 +193,19 @@ int handleMessages(int newsockfd)
       case USER_MESSAGE:
         writeMessageToFile(pack);
         break;
+      case USER_CONNECTED_MESSAGE:
+        writeMessageToFile(pack);
+        sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+        break;
     }
-
-
+    printPacket(pack);
   }
  
 }
 
-
-void readEntireFile(){
-  ifstream file("group");
-  char buffer[PROTOCOL_PACKET_SIZE + 1];
-  
-  while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE))
-  {
-    printPacket(deserializePacket(string(buffer)));
-  }
-                // terminated for use with cout.
-}
-
-
 void* startListening(void *threadarg)
 {
-  //readEntireFile();
+  //readEntireFile(String("group"));
   //return (void*)1;
 
   while(true)
