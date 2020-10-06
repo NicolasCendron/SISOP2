@@ -36,9 +36,11 @@ void error(char *msg)
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
 #define USER_MAX_CONNECTIONS 1004
+#define ASK_SEQ 1005
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
-#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
+#define PROTOCOL_LONG_SIZE 20
+#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
 struct thread_data
 {
   int thread_id;
@@ -48,11 +50,11 @@ char buffer[BUFFER_SIZE] = {0};
 void printPacket(packet * pack){
   std::cout << "\nPacket do Cliente" << std::endl;
   std::cout << "Tipo de Mensagem: " + to_string(pack->nMessageType)  << std::endl;
+  std::cout << "Numero de Sequencia: " + to_string(pack->nSeq)  << std::endl;
   std::cout << "Texto da mensagem: " + pack->strPayload  << std::endl;
   std::cout << "Nome Usuário: " + pack->strUserName  << std::endl;
   std::cout << "Nome Grupo: " + pack->strGroupName  << std::endl;
-  //std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
-  //std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
+  std::cout << "Timestamp: " + to_string(pack->nTimeStamp)  << std::endl;
 
 }
 
@@ -64,6 +66,13 @@ int createSocket(){
 }
 
 vector<connection*> arrConnection;
+int NEXT_SEQ = 0;
+
+int getNextSeq()
+{
+  ++NEXT_SEQ;
+  return NEXT_SEQ;
+}
 
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
@@ -111,7 +120,7 @@ string serializePacket(packet * pack)
 {
     string serialized;
     serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
-    serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(to_string(pack->nTimeStamp),'0',PROTOCOL_LONG_SIZE);
     serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
     serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
     serialized = serialized + padLeft(pack->strGroupName,' ',PROTOCOL_STRING_SIZE);
@@ -125,7 +134,7 @@ packet* deserializePacket(string strPack)
     string strBuff;
 
     std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
-    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nLength; nPointer+=PROTOCOL_INT_SIZE;
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
     pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
     pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
     pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
@@ -153,6 +162,7 @@ int writeToSocket(int sockfd, string message){
         std::cout << "\nERROR writing connected message" << std::endl;
         fflush(stdout);
     }
+    return 0;
 }
 
 void writeMessageToFile(packet *pack){
@@ -173,6 +183,12 @@ vector<packet*> readEntireFile(string strGroupName){
     arrPacks.push_back(pack);
   }
   return arrPacks;
+}
+
+void sendSequenceNumber(packet *pack, int newsockfd)
+{
+  pack-> nSeq = getNextSeq();
+  writeToSocket(newsockfd,serializePacket(pack));
 }
 
 void sendConnectionFailedMessage(packet *pack, int newsockfd)
@@ -197,11 +213,8 @@ bool handleUserConnection(packet *pack, int newsockfd)
  
   int nCountUserConnections = 1;
   for(auto connection: arrConnection){ 
-	  if(pack->strUserName.compare(connection->strUserName) == 0 ){
+	  if(pack->strUserName.compare(connection->strUserName) == 0 ){ /// Verifica Numero de Conexoes
       nCountUserConnections++;
-      if(pack->strGroupName.compare(connection->strGroupName) == 0){
-        nCountUserConnections+=10;
-      }
     }
   }  
   cout << nCountUserConnections <<endl;
@@ -214,7 +227,7 @@ bool handleUserConnection(packet *pack, int newsockfd)
   oConn->strGroupName = strGroupName;
   oConn->nSocket = newsockfd;
 
-  arrConnection.push_back(oConn);
+  arrConnection.push_back(oConn); // Computa essa conexão
 
   return true;
 }
@@ -229,6 +242,9 @@ int handleMessages(int newsockfd)
     pack = readFromSocket(newsockfd);
   
     switch(pack -> nMessageType){
+      case ASK_SEQ:
+        sendSequenceNumber(pack,newsockfd);
+        break;
       case USER_MESSAGE:
         writeMessageToFile(pack);
         break;
