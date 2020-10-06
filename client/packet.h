@@ -13,3 +13,9 @@ string strUserName; // Nome do User
 
 
 
+
+typedef struct __conn{
+    int nSocket; //número do socket
+    string strUsername; // nome do usuário
+    string strGroupname; // nome do grupo
+}conn;

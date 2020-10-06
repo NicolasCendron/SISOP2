@@ -34,7 +34,7 @@ int main(int argc, char **argv){
         }
 
     string username = string(argv[1]);
-    string groupname = string(argv[2]);
+    string strGroupName = string(argv[2]);
     string ip = string(argv[3]);
     string port = string(argv[4]);
     
@@ -49,12 +49,16 @@ int main(int argc, char **argv){
     }*/
 
 
+
+
     std::cout << "user: " + username << std::endl;
-    std::cout << "group: " + groupname << std::endl;
+    std::cout << "group: " + strGroupName << std::endl;
     std::cout << "ip: " + ip << std::endl;
     std::cout << "port: " + port << std::endl;
 
-    connectToServer(stoi(port),ip,username);
+    
+
+    connectToServer(stoi(port),ip,username,strGroupName);
 
     
 }

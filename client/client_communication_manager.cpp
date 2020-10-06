@@ -168,7 +168,7 @@ int writeToSocket(int sockfd, string message){
 }
 
 
-int connectToServer(int portno, string host, string strUserName)
+int connectToServer(int portno, string host, string strUserName,string strGroupName)
 {
   
   bool bTerminate = false;
@@ -179,6 +179,14 @@ int connectToServer(int portno, string host, string strUserName)
     char buffer[BUFFER_SIZE];
 
     sockfd = createSocket();
+
+   conn *connection = new conn;
+   connection->nSocket = sockfd;
+   connection->strGroupname = strGroupName;
+   connection->strUsername = strUserName;
+    
+
+
     server = getServerInfo(host);
     serv_addr = prepServerConnection(server,portno);
 
