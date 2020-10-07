@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "headers/server_communication_manager.h"
 #define NUM_THREADS 3
 
@@ -10,6 +11,7 @@ struct thread_data
   int port;
 };
 
+sem_t semaphore_server;
 
 pthread_t listeningThreads[NUM_THREADS];
 struct thread_data td[NUM_THREADS];
