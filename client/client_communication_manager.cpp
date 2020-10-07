@@ -11,6 +11,16 @@
 #include <inttypes.h>
 #include <math.h>
 #include "packet.h"
+#include <sstream>
+#include <ctime>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
+#include <unistd.h>
+#include <termios.h>
+#include <vector>
+#include <mutex>
+#include <condition_variable>
 
 // struct  hostent
 // {
@@ -37,33 +47,33 @@
 #define USER_CONNECTED_MESSAGE 1001
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
+#define USER_MAX_CONNECTIONS 1004
+#define ASK_SEQ 1005
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
-#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
+#define PROTOCOL_LONG_SIZE 20
+#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
 
+// ESC-H, ESC-J (I remember using this sequence on VTs)
+#define clear() printf("\033[H\033[J")
+
+//ESC-BRACK-column;row (same here, used on terminals on an early intranet)
+#define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
+
+int SOCKET_ID = 0;
+string USER_NAME = "";
+vector<packet*> arrMessages;
 
 string padLeft(string strOld,char cPad,int nSize){
     return std::string(nSize - strOld.length(), cPad) + strOld;
 }
 
-string getMessageNameByType(int msgType){
-
-        switch (msgType)
-        {
-        case USER_MESSAGE:
-            return string("Mensagem de Texto");
-        case USER_CONNECTED_MESSAGE:
-            return string("Usuário Conectado");
-        case USER_DISCONNECTED:
-            return string("Usuário Desconectou");
-        case USER_EXIT_GROUP:
-            return string("Usuário saiu do grupo");
-        default:
-            return string("");
-        }
-    
+// trim from start (in place)
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
 }
-
 
 
 void printPacket(packet * pack){
@@ -72,32 +82,73 @@ void printPacket(packet * pack){
     std::cout << "Tipo de Mensagem:" + to_string(pack->nMessageType) << std::endl;
     std::cout << "Usuário:" + pack->strUserName << std::endl;
     std::cout << "Texto da mensagem:" + pack->strPayload << std::endl;
-    //std::cout << "Tamanho da mensagem:" + to_string(pack->nLength) << std::endl;
-    //std::cout << "Timestamp:" + to_string(pack->timestamp) << std::endl;
+    std::cout << "Nome do Grupo:" + pack->strGroupName << std::endl;
+    std::cout << "Timestamp:" + to_string(pack->nTimeStamp) << std::endl;
 }
 
 string serializePacket(packet * pack)
 {
     string serialized;
     serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
-    serialized = serialized + padLeft(to_string(pack->nLength),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(to_string(pack->nTimeStamp),'0',PROTOCOL_LONG_SIZE);
     serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
     serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
-    std::cout << "**" +  serialized + "&&" << std::endl;
+    serialized = serialized + padLeft(pack->strGroupName,' ',PROTOCOL_STRING_SIZE);
+    //std::cout << "**" +  serialized + "&&" << std::endl;
     return serialized;
 }
 
-double getTimeStamp()
+packet* deserializePacket(string strPack)
+{   int nPointer = 0;
+    packet *pack = new packet;
+    string strBuff;
+
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
+    pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
+    return pack;
+}
+
+
+int writeToSocket(int sockfd, string message){
+    
+    fflush(stdin);
+    int nMessageLength = message.length();
+    int n;
+    n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
+    if (n < 0){
+        std::cout << "\nERROR writing connected message" << std::endl;
+        fflush(stdout);
+    }
+    return 0;
+}
+
+packet* readFromSocket(int newsockfd){
+    char * buffer = (char*)malloc(PROTOCOL_PACKET_SIZE);
+    int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
+    if (n < 0) 
+      std::cout << "ERROR reading from socket" << std::endl;
+  
+    fflush(stdout);
+    
+    packet * pack = deserializePacket(string(buffer));
+    return pack;
+}
+
+
+long long getTimeStamp()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    double time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
     return time_in_mill;
 }
 
-string createUserMessage(string strUserName){
+string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
-    printf("\nPlease enter the message: ");
+    printf(" >>>> ");
     fflush(stdout);
     string strUserMessage;
     getline(cin,strUserMessage); // Pega a mensagem
@@ -105,21 +156,23 @@ string createUserMessage(string strUserName){
     packet *pack = new packet;
 
     pack->nMessageType = USER_MESSAGE;
-    pack->nLength = strUserMessage.length();
+    pack->nTimeStamp = getTimeStamp();
     pack->strPayload =  strUserMessage;
     pack->strUserName = strUserName;
-
+    pack->strGroupName = strGroupName;
     return serializePacket(pack);
 }
 
-string createUserConnectedMessage(string strUserName){
+
+string createUserConnectedMessage(string strUserName, string strGroupName){
 
     packet *pack = new packet;
     pack->nMessageType = USER_CONNECTED_MESSAGE;
     //pack->timestamp = getTimeStamp();
-    pack->nLength = strUserName.length();
+    pack->nTimeStamp = getTimeStamp();
     pack->strUserName = strUserName;
     pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
+    pack->strGroupName = strGroupName;
 
     return  serializePacket(pack);
 }
@@ -156,21 +209,66 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
     return serv_addr;
 }
 
-int writeToSocket(int sockfd, string message){
-     fflush(stdin);
-    int nMessageLength = message.length();
-    int n;
-    n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
-    if (n < 0){
-        std::cout << "\nERROR writing connected message" << std::endl;
-        fflush(stdout);
-    }
+bool compareBySeq(const packet* a, const packet* b)
+{
+    return a->nTimeStamp < b->nTimeStamp;
 }
 
 
+void printAllMessages()
+{   clear();
+    std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
+    for(auto pack: arrMessages){ 
+        if(pack->strUserName.compare(USER_NAME) == 0)
+        {
+            pack->strUserName = "Você";
+        }
+         
+	  if(pack->strUserName.compare(pack->strPayload) == 0 ){
+            cout << "[" + pack->strUserName  + "] >> <ENTROU NO GRUPO>" << endl;
+            continue;
+        }
+
+        cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
+
+        fflush(stdout);
+  } 
+}
+
+void handleMessages(packet *pack)
+{ 
+
+    
+    if (pack->nMessageType == USER_MAX_CONNECTIONS){
+        clear();
+        cout << "informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
+        return;
+    }
+    arrMessages.push_back(pack);
+    printAllMessages();
+    
+}
+
+
+<<<<<<< HEAD
 int connectToServer(int portno, string host, string strUserName,string strGroupName)
+=======
+void* listenForNewMessages(void *threadarg){
+    int i = 1;
+    clear();
+    gotoxy(1,1);
+    while(true){   
+     if(SOCKET_ID != 0){
+        packet *pack  = readFromSocket(SOCKET_ID);
+        handleMessages(pack);
+        
+     }
+    }
+}
+
+int connectToServer(int portno, string host, string strUserName, string strGroupName)
+>>>>>>> a0bdb7a02a0369a89abd34212ab570dca58a8766
 {
-  
   bool bTerminate = false;
   int sockfd, n;
     struct sockaddr_in serv_addr;
@@ -189,15 +287,16 @@ int connectToServer(int portno, string host, string strUserName,string strGroupN
 
     server = getServerInfo(host);
     serv_addr = prepServerConnection(server,portno);
-
+    SOCKET_ID = sockfd;
+    USER_NAME = strUserName;
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
         {
         std::cout << "\n ERROR connecting" << std::endl;
         fflush(stdout);
         }
-        
-    writeToSocket(sockfd,createUserConnectedMessage(strUserName));
- 
+
+    writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
+
     while(bTerminate == false)
     {   
         if(strcmp(buffer,"exit") == 0)
@@ -206,10 +305,9 @@ int connectToServer(int portno, string host, string strUserName,string strGroupN
             bTerminate = true;
         }
         else
-        {  
-
-            writeToSocket(sockfd,createUserMessage(strUserName));
-           
+        {   
+            writeToSocket(sockfd,createUserMessage(strUserName,strGroupName)); 
+            
         }
     }
     close(sockfd);

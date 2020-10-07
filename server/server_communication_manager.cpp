@@ -7,12 +7,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "headers/server_communication_manager.h"
-#include "packet.h"
+#include "headers/packet.h"
+#include "headers/connection.h"
 #include <arpa/inet.h>
 #include <algorithm> 
 #include <cctype>
 #include <locale>
 #include <sstream>
+#include <fstream>
+#include <vector>
 void error(char *msg)
 {
   perror(msg);
@@ -32,9 +35,12 @@ void error(char *msg)
 #define USER_CONNECTED_MESSAGE 1001
 #define USER_DISCONNECTED 1002
 #define USER_EXIT_GROUP 1003
+#define USER_MAX_CONNECTIONS 1004
+#define ASK_SEQ 1005
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
-#define PROTOCOL_PACKET_SIZE 2*PROTOCOL_STRING_SIZE + 2*PROTOCOL_INT_SIZE
+#define PROTOCOL_LONG_SIZE 20
+#define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
 struct thread_data
 {
   int thread_id;
@@ -44,10 +50,11 @@ char buffer[BUFFER_SIZE] = {0};
 void printPacket(packet * pack){
   std::cout << "\nPacket do Cliente" << std::endl;
   std::cout << "Tipo de Mensagem: " + to_string(pack->nMessageType)  << std::endl;
+  std::cout << "Numero de Sequencia: " + to_string(pack->nSeq)  << std::endl;
   std::cout << "Texto da mensagem: " + pack->strPayload  << std::endl;
   std::cout << "Nome Usuário: " + pack->strUserName  << std::endl;
-  std::cout << "Tamanho da mensagem: " + to_string(pack->nLength)  << std::endl;
-  //std::cout << "Timestamp: " + to_string(pack->timestamp)  << std::endl;
+  std::cout << "Nome Grupo: " + pack->strGroupName  << std::endl;
+  std::cout << "Timestamp: " + to_string(pack->nTimeStamp)  << std::endl;
 
 }
 
@@ -56,6 +63,15 @@ int createSocket(){
   if (sockfd < 0)
     std::cout << "ERROR opening socket" << std::endl;
   return sockfd;
+}
+
+vector<connection*> arrConnection;
+int NEXT_SEQ = 0;
+
+int getNextSeq()
+{
+  ++NEXT_SEQ;
+  return NEXT_SEQ;
 }
 
 // trim from start (in place)
@@ -96,20 +112,32 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
   return newsockfd;
 }
 
+string padLeft(string strOld,char cPad,int nSize){
+    return std::string(nSize - strOld.length(), cPad) + strOld;
+}
+
+string serializePacket(packet * pack)
+{
+    string serialized;
+    serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
+    serialized = serialized + padLeft(to_string(pack->nTimeStamp),'0',PROTOCOL_LONG_SIZE);
+    serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
+    serialized = serialized + padLeft(pack->strUserName,' ',PROTOCOL_STRING_SIZE);
+    serialized = serialized + padLeft(pack->strGroupName,' ',PROTOCOL_STRING_SIZE);
+    //std::cout << "**" +  serialized + "&&" << std::endl;
+    return serialized;
+}
+
 packet* deserializePacket(string strPack)
 {   int nPointer = 0;
     packet *pack = new packet;
     string strBuff;
-    fflush(stdout);
-    // nPointer+=PROTOCOL_INT_SIZE;
-    // nPointer+=PROTOCOL_INT_SIZE;
-    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nMessageType = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
-    // //strBuff = strPack.substr(nPointer,PROTOCOL_INT_SIZE); pack->nLength = stoi(strBuff); nPointer+=PROTOCOL_INT_SIZE;
-    
+
     std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
-    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nLength; nPointer+=PROTOCOL_INT_SIZE;
+    std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
     pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
-    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE; 
+    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+    pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
     return pack;
 }
 
@@ -122,26 +150,126 @@ packet* readFromSocket(int newsockfd){
     fflush(stdout);
     
     packet * pack = deserializePacket(string(buffer));
-    printPacket(pack);
+   
     return pack;
+}
+int writeToSocket(int sockfd, string message){
+     fflush(stdin);
+    int nMessageLength = message.length();
+    int n;
+    n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
+    if (n < 0){
+        std::cout << "\nERROR writing connected message" << std::endl;
+        fflush(stdout);
+    }
+    return 0;
+}
+
+void writeMessageToFile(packet *pack){
+    std::ofstream outfile;
+    outfile.open(pack->strGroupName, std::ios_base::app); // append instead of overwrite
+    outfile << serializePacket(pack);
+}
+
+vector<packet*> readEntireFile(string strGroupName){
+  ifstream file(strGroupName.c_str());
+  char buffer[PROTOCOL_PACKET_SIZE + 1];
+  vector<packet*> arrPacks;
+  packet *pack = new packet();
+  while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE))
+  {
+    pack = deserializePacket(string(buffer));
+    printPacket(pack);
+    arrPacks.push_back(pack);
+  }
+  return arrPacks;
+}
+
+void sendSequenceNumber(packet *pack, int newsockfd)
+{
+  pack-> nSeq = getNextSeq();
+  writeToSocket(newsockfd,serializePacket(pack));
+}
+
+void sendConnectionFailedMessage(packet *pack, int newsockfd)
+{
+  pack-> nMessageType = USER_MAX_CONNECTIONS;
+  writeToSocket(newsockfd,serializePacket(pack));
+}
+
+void sendMessageHistoryToClient(string strGroupName, int newsockfd){
+  vector<packet*> arrPacks = readEntireFile(strGroupName);
+  for(auto pack: arrPacks){ 
+	  writeToSocket(newsockfd,serializePacket(pack));
+  } 
+
+}
+
+bool handleUserConnection(packet *pack, int newsockfd)
+{
+  string strUserName = pack->strUserName;
+  string strGroupName = pack->strGroupName;
+  int nSocket = newsockfd;
+ 
+  int nCountUserConnections = 1;
+  for(auto connection: arrConnection){ 
+	  if(pack->strUserName.compare(connection->strUserName) == 0 ){ /// Verifica Numero de Conexoes
+      nCountUserConnections++;
+    }
+  }  
+  cout << nCountUserConnections <<endl;
+  if(nCountUserConnections > 2){
+    return false;
+  }
+
+  connection *oConn = new connection;
+  oConn->strUserName = strUserName;
+  oConn->strGroupName = strGroupName;
+  oConn->nSocket = newsockfd;
+
+  arrConnection.push_back(oConn); // Computa essa conexão
+
+  return true;
 }
 
 int handleMessages(int newsockfd)
 {
 
   packet *pack;
+  bool bConnectionSuccess = true;
   while(true)
   {
     pack = readFromSocket(newsockfd);
-    fflush(stdout);
-
-      
+  
+    switch(pack -> nMessageType){
+      case ASK_SEQ:
+        sendSequenceNumber(pack,newsockfd);
+        break;
+      case USER_MESSAGE:
+        writeMessageToFile(pack);
+        break;
+      case USER_CONNECTED_MESSAGE:
+        bConnectionSuccess = handleUserConnection(pack, newsockfd);
+        if(bConnectionSuccess)
+        {
+          writeMessageToFile(pack);
+          sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+        }
+        else{
+          sendConnectionFailedMessage(pack,newsockfd);
+        }
+        break;
+    }
+    printPacket(pack);
   }
  
 }
 
 void* startListening(void *threadarg)
 {
+  //readEntireFile(String("group"));
+  //return (void*)1;
+
   while(true)
   {
     struct thread_data *my_data;   

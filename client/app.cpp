@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
-
+#include <pthread.h>
+#include <termios.h>
+#include <unistd.h>
 //the following are UBUNTU/LINUX, and MacOS ONLY terminal color codes.
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
@@ -25,6 +27,15 @@ using namespace std;
 
 int validateStr(string str);
 bool is_number(const std::string& s);
+
+struct thread_data
+{
+  int thread_id;
+  int port;
+};
+
+
+pthread_t listenNewMessagesThread;
 
 int main(int argc, char **argv){
 
@@ -56,8 +67,8 @@ int main(int argc, char **argv){
     std::cout << "ip: " + ip << std::endl;
     std::cout << "port: " + port << std::endl;
 
-    
 
+    int rc = pthread_create(&listenNewMessagesThread, NULL, listenForNewMessages, NULL);
     connectToServer(stoi(port),ip,username,strGroupName);
 
     

@@ -46,6 +46,11 @@
         "numeric": "cpp",
         "random": "cpp",
         "ctime": "cpp",
+<<<<<<< HEAD
         "list": "cpp"
+=======
+        "list": "cpp",
+        "mutex": "cpp"
+>>>>>>> a0bdb7a02a0369a89abd34212ab570dca58a8766
     }
 }

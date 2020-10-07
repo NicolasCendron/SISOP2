@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "headers/server_communication_manager.h"
-#define NUM_THREADS 4
+#define NUM_THREADS 3
 
 struct thread_data
 {
@@ -33,5 +33,7 @@ int main(int argc, char **argv){
         }    
     } 
     pthread_exit(NULL); 
+
+
 
 }
