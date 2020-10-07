@@ -1,5 +1,7 @@
 
 #include <string>
+
+//the following are UBUNTU/LINUX, and MacOS ONLY terminal color codes.
 using namespace std;
 typedef struct __packet{
 int nType; // Tipo do pacote (p.ex. DATA | CMD)
@@ -14,3 +16,10 @@ string strGroupName; //Nome do Group
 
 
 
+/*
+typedef struct __conn{
+    int nSocket; //número do socket
+    string strUsername; // nome do usuário
+    string strGroupname; // nome do grupo
+}conn;
+*/
