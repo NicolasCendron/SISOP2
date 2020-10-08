@@ -46,7 +46,7 @@ char buffer[BUFFER_SIZE] = {0};
 int createSocket(){
   int sockfd = socket(AF_INET, SOCK_STREAM, 0); // Cria socket para escutar um client
   if (sockfd < 0)
-    std::cout << "ERROR opening socket" << std::endl;
+    std::cout << RED << "ERROR opening socket" << RESET << std::endl;
   return sockfd;
 }
 
@@ -65,7 +65,7 @@ struct sockaddr_in prepForListening(int portno){
   bzero((char *) &serv_addr, sizeof(serv_addr)); // Prepara a estrutura para ouvir o client
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(portno); //Converte host byte order para network byte order
-  serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
+  serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   return serv_addr;
 } 
 
@@ -92,7 +92,7 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
   socklen_t clilen = sizeof(cli_addr);
   int newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); //Aceita a conexão
   if (newsockfd < 0)
-    std::cout << "ERROR on accept" << std::endl;
+    std::cout << RED << "ERROR on accept" << RESET << std::endl;
   return newsockfd;
 }
 

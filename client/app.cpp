@@ -52,21 +52,6 @@ int main(int argc, char **argv){
     std::cout << "port: " + port << std::endl;
 
 
-    /*
-    struct tm ts;
-    char buf[80];
-
-    time_t now;
-    time(&now);
-    ts = *localtime(&now);
-    strftime(buf, sizeof(buf)," %H:%M:%S",&ts);
-
-    std::time_t test = 1439467747492;
-    //std::cout << std::ctime(&test);
-    std::cout <<  buf << std::endl;
-    */
-
-
 
     int rc = pthread_create(&listenNewMessagesThread, NULL, listenForNewMessages, NULL);
     connectToServer(stoi(port),ip,username,strGroupName);

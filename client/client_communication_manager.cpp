@@ -18,6 +18,7 @@
 #include <locale>
 #include <unistd.h>
 #include <termios.h>
+#include <semaphore.h>
 #include <vector>
 #include <mutex>
 #include <condition_variable>
@@ -55,7 +56,7 @@ int SOCKET_ID = 0;
 string USER_NAME = "";
 vector<packet*> arrMessages;
 
-
+sem_t semaphore_client;
 
 long long getTimeStamp()
 {
@@ -97,10 +98,10 @@ string createUserConnectedMessage(string strUserName, string strGroupName){
 }
 
 int createSocket(){
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);// Cria Socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);// Cria Socket --  socket(domain, type, protocol);
     if (sockfd < 0) 
         {
-            std::cout << "ERROR opening socket" << std::endl;
+            std::cout << RED << "ERROR opening socket" <<  RESET << std::endl;
             fflush(stdout);
         }
         return sockfd;
@@ -110,13 +111,36 @@ struct hostent * getServerInfo(string host){
     struct hostent *server;
     server = gethostbyname(host.c_str()); // Pega o endereço do Server
     if (server == NULL) {
-        std::cout << "ERROR, no such host" << std::endl;
+        std::cout << RED << "ERROR, no such host" << RESET << std::endl;
         fflush(stdout);
         exit(0);
     }
+
+    //não tinha q ter um return do server??
 }
 
 struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
+
+    /*
+        typedef struct sockaddr_in {
+            #if ...
+            short          sin_family;
+            #else
+            ADDRESS_FAMILY sin_family;
+            #endif
+            USHORT         sin_port;
+            IN_ADDR        sin_addr;
+            CHAR           sin_zero[8];
+        } SOCKADDR_IN, *PSOCKADDR_IN;
+
+         typedef struct hostent {
+            char  *h_name;
+            char  **h_aliases;
+            short h_addrtype;
+            short h_length;
+            char  **h_addr_list;
+        } HOSTENT, *PHOSTENT, *LPHOSTENT;
+    */
 
     struct sockaddr_in serv_addr;
     bzero((char *) &serv_addr, sizeof(serv_addr));  //Inicializa estrutura de comunicação com o server
@@ -169,7 +193,10 @@ void handleMessages(packet *pack)
         cout << "informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
         return;
     }
+
+    //sem_wait(&semaphore_client); //semáforo
     arrMessages.push_back(pack);
+    //sem_post(&semaphore_client); //semáforo
     printAllMessages();
     
 }
@@ -195,27 +222,34 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
 {
   bool bTerminate = false;
   int sockfd, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+    struct sockaddr_in serv_addr; // specifies a transport address and port for the AF_INET address family
+
+/*
+        typedef struct hostent {
+            char  *h_name;
+            char  **h_aliases;
+            short h_addrtype;
+            short h_length;
+            char  **h_addr_list;
+        } HOSTENT, *PHOSTENT, *LPHOSTENT;
+*/
+
+
+    struct hostent *server; //used by functions to store information about a given host, such as host name, IPv4 address
     string strMessageContent;
     char buffer[BUFFER_SIZE];
 
     sockfd = createSocket();
-
-   /*conn *connection = new conn;
-   connection->nSocket = sockfd;
-   connection->strGroupname = strGroupName;
-   connection->strUsername = strUserName;*/
-    
+  
 
 
-    server = getServerInfo(host);
+    server = getServerInfo(host); //127.0.0.1 
     serv_addr = prepServerConnection(server,portno);
     SOCKET_ID = sockfd;
     USER_NAME = strUserName;
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
         {
-        std::cout << "\n ERROR connecting" << std::endl;
+        std::cout << RED << "\n ERROR connecting" << RESET << std::endl;
         fflush(stdout);
         }
 
