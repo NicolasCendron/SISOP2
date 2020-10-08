@@ -138,18 +138,24 @@ void printAllMessages()
 {   clear();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
+	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
+            if(pack->strUserName.compare(USER_NAME) == 0)
+            {
+                cout << "[Você] >> <ENTROU NO GRUPO>" << endl;
+            }
+            else{
+                cout << "[" + pack->strUserName  + "] >> <ENTROU NO GRUPO>" << endl;
+            }
+        }
+        else{
         if(pack->strUserName.compare(USER_NAME) == 0)
-        {
-            pack->strUserName = "Você";
+            {
+                cout << "[Você] >> " + pack->strPayload << endl;
+            }
+            else{
+                cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
+            }
         }
-         
-	  if(pack->strUserName.compare(pack->strPayload) == 0 ){
-            cout << "[" + pack->strUserName  + "] >> <ENTROU NO GRUPO>" << endl;
-            continue;
-        }
-
-        cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
-
         fflush(stdout);
   } 
 }
@@ -172,11 +178,12 @@ void handleMessages(packet *pack)
 
 void* listenForNewMessages(void *threadarg){
     int i = 1;
-    clear();
-    gotoxy(1,1);
+    //clear();
+    //gotoxy(1,1);
     while(true){   
      if(SOCKET_ID != 0){
         packet *pack  = readFromSocket(SOCKET_ID);
+        cout << "Leu do Socket" << endl;
         handleMessages(pack);
         
      }

@@ -119,16 +119,26 @@ vector<packet*> readEntireFile(string strGroupName){
   return arrPacks;
 }
 
-void sendSequenceNumber(packet *pack, int newsockfd)
-{
-  pack-> nSeq = getNextSeq();
-  writeToSocket(newsockfd,serializePacket(pack));
-}
+// void sendSequenceNumber(packet *pack, int newsockfd)
+// {
+//   pack-> nSeq = getNextSeq();
+//   writeToSocket(newsockfd,serializePacket(pack));
+// }
 
 void sendConnectionFailedMessage(packet *pack, int newsockfd)
 {
   pack-> nMessageType = USER_MAX_CONNECTIONS;
   writeToSocket(newsockfd,serializePacket(pack));
+}
+
+void sendMessageToGroup(packet *pack)
+{
+  for(auto oConnection: arrConnection){ 
+        if(oConnection->strGroupName.compare(pack->strGroupName) == 0)
+        {
+            writeToSocket(oConnection->nSocket,serializePacket(pack));
+        }
+  }
 }
 
 void sendMessageHistoryToClient(string strGroupName, int newsockfd){
@@ -176,11 +186,9 @@ int handleMessages(int newsockfd)
     pack = readFromSocket(newsockfd);
   
     switch(pack -> nMessageType){
-      case ASK_SEQ:
-        sendSequenceNumber(pack,newsockfd);
-        break;
       case USER_MESSAGE:
         writeMessageToFile(pack);
+        sendMessageToGroup(pack);
         break;
       case USER_CONNECTED_MESSAGE:
         bConnectionSuccess = handleUserConnection(pack, newsockfd);
@@ -188,6 +196,7 @@ int handleMessages(int newsockfd)
         {
           writeMessageToFile(pack);
           sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+          sendMessageToGroup(pack);
         }
         else{
           sendConnectionFailedMessage(pack,newsockfd);

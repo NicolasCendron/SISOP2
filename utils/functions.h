@@ -124,6 +124,5 @@ packet* readFromSocket(int newsockfd){
     fflush(stdout);
     
     packet * pack = deserializePacket(string(buffer));
-   
     return pack;
 }
