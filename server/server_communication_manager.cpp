@@ -194,9 +194,9 @@ int handleMessages(int newsockfd)
         bConnectionSuccess = handleUserConnection(pack, newsockfd);
         if(bConnectionSuccess)
         {
-          writeMessageToFile(pack);
           sendMessageHistoryToClient(pack->strGroupName,newsockfd);
           sendMessageToGroup(pack);
+          writeMessageToFile(pack);
         }
         else{
           sendConnectionFailedMessage(pack,newsockfd);
