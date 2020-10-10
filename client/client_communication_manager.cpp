@@ -58,29 +58,43 @@ vector<packet*> arrMessages;
 
 sem_t semaphore_client;
 
-long long getTimeStamp()
+ time_t getTimeStamp()
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-    return time_in_mill;
-}
+    //struct timeval tv;
+    //gettimeofday(&tv, NULL);
+    //long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+
+    time_t now = time(0);
+    tm *time_now = localtime(&now);
+
+    return now;
+} 
+
+
 
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
-    printf(" >>>> ");
+    printf(" \n >>>> ");
     fflush(stdout);
     string strUserMessage;
-    getline(cin,strUserMessage); // Pega a mensagem
+    
+    getline(cin,strUserMessage);
+
 
     packet *pack = new packet;
 
     pack->nMessageType = USER_MESSAGE;
+    //pack->nTimeStamp = getTimeStamp();
+    //time_t now = time(0);
+    //tm *time_now = localtime(&now);
+    //std::cout << "timenow: " + to_string(time_now->tm_hour) << std::endl;
+
     pack->nTimeStamp = getTimeStamp();
     pack->strPayload =  strUserMessage;
     pack->strUserName = strUserName;
     pack->strGroupName = strGroupName;
     return serializePacket(pack);
+    
 }
 
 
@@ -162,24 +176,23 @@ void printAllMessages()
 {   clear();
 
     
-
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
-       /*cout << pack->nTimeStamp << endl;
-       cout << pack->nType << endl;
+      
+       /* cout << pack->nType << endl;
        cout << pack->strUserName << endl; */
 	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
-            cout << "username: " << USER_NAME  << endl;
-            cout << "username(pack): " << pack->strUserName  << endl;
+            //cout << "username: " << USER_NAME  << endl;
+            //cout << "username(pack): " << pack->strUserName  << endl;
 
             if(pack->strUserName.compare(USER_NAME) == 0)
             {
                 cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<": >> <ENTROU NO GRUPO>" << endl;
-                 cout << "aq1 "  << endl;
+                // cout << "aq1 "  << endl;
             }
             else{
                 cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << ": >> <ENTROU NO GRUPO>" << endl;
-                cout << "aq1 "  << endl;
+                //cout << "aq1 "  << endl;
             }
         }
         else{
@@ -201,7 +214,7 @@ void handleMessages(packet *pack)
     
     if (pack->nMessageType == USER_MAX_CONNECTIONS){
         clear();
-        cout << "informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
+        cout << "Informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
         return;
     }
 
@@ -264,6 +277,7 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         fflush(stdout);
         }
 
+  
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
     while(bTerminate == false)

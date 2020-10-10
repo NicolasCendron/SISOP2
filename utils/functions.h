@@ -33,7 +33,10 @@
 /*  SOCKETS  */
 
 int writeToSocket(int sockfd, string message){
-     fflush(stdin);
+    
+    
+
+    fflush(stdin);
     int nMessageLength = message.length();
     int n;
     n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
@@ -41,24 +44,37 @@ int writeToSocket(int sockfd, string message){
         std::cout << "\nERROR writing connected message" << std::endl;
         fflush(stdout);
     }
-    return 0;
+       
+    
+
+     return 0;
 }
 
 
 string timestamp_to_date(time_t timestamp_packet){
-    struct tm ts;
+    tm *time_now = localtime(&timestamp_packet);
     char buf[80];
 
+    //std::cout << "timestamp_na funcao:::: " << timestamp_packet << std::endl;
+    
+    //time(&timestamp_packet);
+    //timeinfo = localtime(&timestamp_packet);
+
+
     //time_t now;
-    time(&timestamp_packet);
-    ts = *localtime(&timestamp_packet);
-    strftime(buf, sizeof(buf),"%H:%M:%S",&ts);
+    //time(&timestamp_packet);
+    //ts = *localtime(&timestamp_packet);
+    
+    //strftime(buf, sizeof(buf),"%H:%M:%S",&ts);
+
+    //sprintf(buf,"")
 
     //std::time_t test = 1439467747492;
     //std::cout << std::ctime(&test);
-    //std::cout <<  buf << std::endl;
+    //std::cout << "ctime:::: " << ctime(&timestamp_packet) << std::endl;
     
-    return buf;
+    //return ctime(&timestamp_packet);
+    return to_string(time_now->tm_hour)+":"+to_string(time_now->tm_min)+":"+to_string(time_now->tm_sec);
 }
 
 
