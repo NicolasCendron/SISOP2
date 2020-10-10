@@ -15,6 +15,7 @@
 #include <locale>
 #include <sstream>
 #include <fstream>
+#include <semaphore.h>
 #include <vector>
 #include "colors.h"
 #include "../utils/functions.h"
@@ -34,7 +35,7 @@ void error(char *msg)
 //   char    sin_zero[8]; /* Not used, must be zero */
 // };
 
-
+sem_t semaforo_server;
 struct thread_data
 {
   int thread_id;
@@ -114,7 +115,10 @@ vector<packet*> readEntireFile(string strGroupName){
   {
     pack = deserializePacket(string(buffer));
     printPacket(pack);
+
+    sem_wait(&semaforo_server);
     arrPacks.push_back(pack);
+    sem_post(&semaforo_server);
   }
   return arrPacks;
 }
@@ -161,7 +165,7 @@ bool handleUserConnection(packet *pack, int newsockfd)
       nCountUserConnections++;
     }
   }  
-  cout << nCountUserConnections <<endl;
+  cout << nCountUserConnections << endl;
   if(nCountUserConnections > 2){
     return false;
   }
@@ -231,7 +235,7 @@ void* startListening(void *threadarg)
       exit(1);
     }
 
-  //init_sem(&semaforo_server,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
+    sem_init(&semaforo_server,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
 
     newsockfd = acceptConnection(sockfd, cli_addr);
     handleMessages(newsockfd);

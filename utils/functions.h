@@ -117,6 +117,7 @@ string serializePacket(packet * pack)
 
 packet* readFromSocket(int newsockfd){
     char * buffer = (char*)malloc(PROTOCOL_PACKET_SIZE);
+
     int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
     if (n < 0) 
       std::cout << RED << "ERROR reading from socket" << RESET << std::endl;

@@ -160,24 +160,35 @@ bool compareBySeq(const packet* a, const packet* b)
 
 void printAllMessages()
 {   clear();
+
+    
+
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
+       /*cout << pack->nTimeStamp << endl;
+       cout << pack->nType << endl;
+       cout << pack->strUserName << endl; */
 	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
+            cout << "username: " << USER_NAME  << endl;
+            cout << "username(pack): " << pack->strUserName  << endl;
+
             if(pack->strUserName.compare(USER_NAME) == 0)
             {
-                cout << "[Você] >> <ENTROU NO GRUPO>" << endl;
+                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<": >> <ENTROU NO GRUPO>" << endl;
+                 cout << "aq1 "  << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "] >> <ENTROU NO GRUPO>" << endl;
+                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << ": >> <ENTROU NO GRUPO>" << endl;
+                cout << "aq1 "  << endl;
             }
         }
         else{
         if(pack->strUserName.compare(USER_NAME) == 0)
             {
-                cout << "[Você] >> " + pack->strPayload << endl;
+                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) << ": >> " << pack->strPayload << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "] >> " + pack->strPayload << endl;
+                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << ": >> " + pack->strPayload << endl;
             }
         }
         fflush(stdout);
