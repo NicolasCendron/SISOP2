@@ -57,18 +57,6 @@ vector<packet*> arrMessages;
 
 sem_t semaphore_client;
 
- time_t getTimeStamp()
-{
-    //struct timeval tv;
-    //gettimeofday(&tv, NULL);
-    //long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-
-    time_t now = time(0);
-    tm *time_now = localtime(&now);
-
-    return now;
-} 
-
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
     printf(" \n >>>> ");
