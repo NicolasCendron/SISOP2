@@ -6,11 +6,14 @@
 #include "colors.h"
 #include <ctime>
 
+
 using namespace std;
 #include "client_communication_manager.h"
 
 int validateStr(string str);
 bool is_number(const std::string& s);
+int showPortsFile();
+
 
 struct thread_data
 {
@@ -28,27 +31,64 @@ int main(int argc, char **argv){
             exit(1); //No file name
         }
 
+   /*
+    string nomeUsu;
+    printf("Informe o seu usuário: \n");
+    getline(cin,nomeUsu);
+    std::cout << "O usuário escolhido foi: " << nomeUsu << std::endl;
+
+    string nomeGrupo;
+    printf("Informe o nome do grupo: \n");
+    getline(cin,nomeGrupo);
+    std::cout << "O grupo escolhido foi: " << nomeGrupo << std::endl;
+
+*/
+
+
+    //int numberPort = listAvaiablePorts();
+    //std::cout << "Porta escolhida: " << numberPort << std::endl;
+    
+   // exit(1);
+
     string username = string(argv[1]);
     string strGroupName = string(argv[2]);
     string ip = string(argv[3]);
     string port = string(argv[4]);
+
+
     
     if(validateStr(username) == 0 || validateStr(strGroupName) == 0){
         exit(1);
     }
 
+    std::cout << " Escolha uma porta:"  << std::endl;
+    int numPorta = showPortsFile();
+    //std::cout << " Porta :::" + numPorta  << std::endl;
+    //exit(1);
+
 
     std::cout << "user: " + username << std::endl;
     std::cout << "group: " + strGroupName << std::endl;
     std::cout << "ip: " + ip << std::endl;
-    std::cout << "port: " + port << std::endl;
+    std::cout << "port: " + to_string(numPorta) << std::endl;
 
 
 
     int rc = pthread_create(&listenNewMessagesThread, NULL, listenForNewMessages, NULL);
     connectToServer(stoi(port),ip,username,strGroupName);
+    //connectToServer(port,ip,username,strGroupName);
 
     
+}
+
+
+int listAvaiablePorts(){
+    int portNumber;
+
+
+
+
+    return portNumber;
 }
 
 

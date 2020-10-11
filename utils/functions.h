@@ -1,9 +1,11 @@
 #include <iostream>
+#include <string>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -14,6 +16,9 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
+
+
+//#include <termios.h>
 #include "../client/colors.h"
 
 
@@ -29,6 +34,7 @@
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_LONG_SIZE 20
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
+
 
 /*  SOCKETS  */
 
@@ -74,7 +80,34 @@ string timestamp_to_date(time_t timestamp_packet){
     //std::cout << "ctime:::: " << ctime(&timestamp_packet) << std::endl;
     
     //return ctime(&timestamp_packet);
-    return to_string(time_now->tm_hour)+":"+to_string(time_now->tm_min)+":"+to_string(time_now->tm_sec);
+    string horas = to_string(time_now->tm_hour);
+    string horasCompletas="0";
+    if(horas.length() == 1){
+        horasCompletas.append(horas);
+    }else{
+        horasCompletas = horas;
+    }
+
+
+    string minutos = to_string(time_now->tm_min);
+    string minutosCompletos="0";
+    if(minutos.length() == 1){
+        minutosCompletos.append(minutos);
+    }else{
+        minutosCompletos = minutos;
+    }
+
+    string segundos = to_string(time_now->tm_sec);
+    string segundosCompletos="0";
+    if(segundos.length() == 1){
+       segundosCompletos.append(segundos);
+    }else{
+        segundosCompletos = segundos;
+    }
+    
+
+    
+    return horasCompletas+":"+minutosCompletos+":"+segundosCompletos;
 }
 
 
@@ -94,6 +127,179 @@ void printPacket(packet * pack){
 
 
 
+
+
+void delete_line(const char *file_name, int n) 
+{ 
+    // open file in read mode or in mode 
+    ifstream is(file_name); 
+  
+    // open file in write mode or out mode 
+    ofstream ofs; 
+    ofs.open("temp.txt", ofstream::out); 
+  
+    // loop getting single characters 
+    char c; 
+    int line_no = 0; 
+    while (is.get(c)) 
+    { 
+        // if a newline character 
+        if (c == '\n') 
+        line_no++; 
+  
+        // file content not to be deleted 
+        if (line_no != n) 
+            ofs << c; 
+    } 
+
+     
+    // closing output file 
+    ofs.close(); 
+  
+    // closing input file 
+    is.close(); 
+  
+    // remove the original file 
+    remove(file_name); 
+  
+    // rename the file 
+    rename("temp.txt", file_name); 
+} 
+
+void blank_line(const char *file_name)
+{   
+  ifstream fin(file_name);    
+  
+  ofstream fout;                
+  fout.open("temp.txt", ios::out);
+  
+  string str;
+  while(getline(fin,str))
+  { 
+    while (str.length()==0 ) 
+       getline(fin,str);   
+  
+    fout<<str<<endl;
+  }
+  fout.close();  
+  fin.close();  
+  remove(file_name);        
+  rename("temp.txt", file_name);
+}
+
+int showPortsFile(){
+    string line;
+    ifstream myfile;
+
+    vector<int> portas;
+    myfile.open( "../utils/portas.txt");
+
+    if (myfile.is_open())
+    {
+        while ( getline (myfile,line) )
+        {
+            //cout << line << '\n';  
+            std::size_t pos = line.find(";");      // position of "live" in str
+            std::string porta = line.substr (0,pos);
+
+            std::string status = line.substr ((pos+1), line.length());
+
+            //cout << porta << '\n';
+            //cout << status << '\n';
+            
+            if (status.compare(0,1,"0") == 0){
+                std::cout << "Porta: " << porta + " > " << RED << "OCUPADA" << RESET << std::endl;
+            }else{
+                portas.push_back(stoi(porta));
+                std::cout << "Porta: " << porta + " > " << GREEN << "LIVRE" << RESET << std::endl;
+            }
+
+        }
+        
+        myfile.close();
+    }
+    else{
+        //cout << "Unable to open file";
+        std::cout << RED << "Err: Unable to open file" << RESET << std::endl;
+        exit(1);
+    }
+
+
+    if(portas.size() > 0){
+        int numPorta;
+        bool encontrou = false;
+        while(!encontrou){
+            printf("Escolha uma porta livre: \n");
+            scanf("%d",&numPorta);
+            printf("A porta escolhida foi grupo escolhido foi: %d \n", numPorta);
+
+            for (auto i = portas.begin(); i != portas.end(); ++i) {
+                if(numPorta == *i){   
+                    encontrou = true;
+                    //cout << *i << " "; 
+                }
+            }
+
+            if(!encontrou){
+                std::cout << YELLOW << "Warn: Informe uma porta liberada" << RESET << std::endl;
+            }
+        }
+
+        if(encontrou){
+            return numPorta;
+        }
+    }else{
+        std::cout << RED << "Err: Não existem mais portas livres" << RESET << std::endl;
+    }
+
+    return -1;
+ 
+
+}
+
+/**
+ * status = 1  --> então  a porta ta liberada
+ * status = 0  --> então  a porta ta ocupada
+ */
+void editPort(int numPorta, int status){
+    int linha=0;
+    int escolhida = -1;
+    string line;
+    ifstream myfile;
+    ofstream editFile;
+    myfile.open( "../utils/portas.txt");
+    editFile.open( "../utils/portas.txt", fstream::in | fstream::out | fstream::ate | ios::app);
+    if (myfile.is_open())
+    {
+        while ( getline (myfile,line) )
+        {
+            std::size_t pos = line.find(";");  
+            if(pos > 0){
+                std::string porta = line.substr (0,pos);
+                if( stoi(porta) == numPorta){
+                    if(line.find(porta)!=string::npos){
+                        editFile << porta+";" + to_string(status) +";\n";
+                        escolhida = linha;            
+                    }
+                }
+                linha++;
+            }         
+        }
+        
+        myfile.close();
+    }
+    else{
+        //cout << "Unable to open file";
+        std::cout << RED << "Err: Unable to open file" << RESET << std::endl;
+        exit(1);
+    }
+    editFile.close();
+    //exit(1);
+    if(escolhida != -1){
+        delete_line("../utils/portas.txt",escolhida);
+        blank_line("../utils/portas.txt");
+    }
+}
 
 string padLeft(string strOld,char cPad,int nSize){
     return std::string(nSize - strOld.length(), cPad) + strOld;

@@ -16,7 +16,6 @@
 #include <algorithm> 
 #include <cctype>
 #include <locale>
-#include <unistd.h>
 #include <termios.h>
 #include <semaphore.h>
 #include <vector>
@@ -163,6 +162,7 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
          (char *)&serv_addr.sin_addr.s_addr,
          server->h_length);
     serv_addr.sin_port = htons(portno);
+
     return serv_addr;
 }
 
@@ -175,7 +175,7 @@ bool compareBySeq(const packet* a, const packet* b)
 void printAllMessages()
 {   clear();
 
-    
+    //showPortsFile();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
       
@@ -187,21 +187,21 @@ void printAllMessages()
 
             if(pack->strUserName.compare(USER_NAME) == 0)
             {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<": >> <ENTROU NO GRUPO>" << endl;
+                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<" >> <ENTROU NO GRUPO>" << endl;
                 // cout << "aq1 "  << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << ": >> <ENTROU NO GRUPO>" << endl;
+                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << " >> <ENTROU NO GRUPO>" << endl;
                 //cout << "aq1 "  << endl;
             }
         }
         else{
         if(pack->strUserName.compare(USER_NAME) == 0)
             {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) << ": >> " << pack->strPayload << endl;
+                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) << " >> " << pack->strPayload << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << ": >> " + pack->strPayload << endl;
+                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << " >> " + pack->strPayload << endl;
             }
         }
         fflush(stdout);
@@ -277,6 +277,59 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         fflush(stdout);
         }
 
+        
+    //cout << "porta::" << portno << '\n';
+    int linha=0;
+    int escolhida = -1;
+    string line;
+    ifstream myfile;
+    ofstream editFile;
+    myfile.open( "../utils/portas.txt");
+    editFile.open( "../utils/portas.txt", fstream::in | fstream::out | fstream::ate | ios::app);
+    if (myfile.is_open())
+    {
+        while ( getline (myfile,line) )
+        {
+            std::size_t pos = line.find(";");  
+            if(pos > 0){
+                //cout << line << '\n';
+                    // position of "live" in str
+                std::string porta = line.substr (0,pos);
+                //std::string status = line.substr ((pos+1),line.length());
+                //cout << porta << '\n';
+                //cout << status[0] << '\n';
+
+                if( stoi(porta) == portno){
+                    //std::string st_txt1 = line;
+                    if(line.find(porta)!=string::npos){
+                        editFile << porta+";0;\n";
+                        escolhida = linha;
+                        //delete_line("../utils/portas.txt",linha);
+                        
+                        //line.replace(line.find(line),line.length(),"");
+                        //line.replace(line.find(porta),line.length(),st_txt2);
+                    
+                    }
+
+                }
+                linha++;
+            }
+            
+        }
+        
+        myfile.close();
+    }
+    else{
+        //cout << "Unable to open file";
+        std::cout << RED << "Err: Unable to open file" << RESET << std::endl;
+        exit(1);
+    }
+    editFile.close();
+    //exit(1);
+    if(escolhida != -1){
+        delete_line("../utils/portas.txt",escolhida);
+        blank_line("../utils/portas.txt");
+    }
   
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
@@ -297,3 +350,5 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
     return 0;
 
 }
+
+
