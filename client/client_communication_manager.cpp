@@ -69,7 +69,6 @@ sem_t semaphore_client;
     return now;
 } 
 
-
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
     printf(" \n >>>> ");

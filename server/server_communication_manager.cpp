@@ -185,7 +185,7 @@ int handleMessages(int newsockfd)
 
   packet *pack;
   bool bConnectionSuccess = true;
-  while(true)
+  while(bConnectionSuccess)
   {
     pack = readFromSocket(newsockfd);
   
@@ -205,6 +205,11 @@ int handleMessages(int newsockfd)
         else{
           sendConnectionFailedMessage(pack,newsockfd);
         }
+        break;
+      case USER_DISCONNECTED:
+        //writeMessageToFile(pack);
+        //sendMessageToGroup(pack);
+        bConnectionSuccess = false;
         break;
     }
     printPacket(pack);

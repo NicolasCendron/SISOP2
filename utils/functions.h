@@ -56,6 +56,16 @@ int writeToSocket(int sockfd, string message){
      return 0;
 }
 
+time_t getTimeStamp(){
+    //struct timeval tv;
+    //gettimeofday(&tv, NULL);
+    //long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+
+    time_t now = time(0);
+    tm *time_now = localtime(&now);
+
+    return now;
+}
 
 string timestamp_to_date(time_t timestamp_packet){
     tm *time_now = localtime(&timestamp_packet);
@@ -315,12 +325,21 @@ packet* deserializePacket(string strPack)
 {   int nPointer = 0;
     packet *pack = new packet;
     string strBuff;
-
-    std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
-    std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
-    pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
-    pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
-    pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;  
+    try{
+        std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
+        std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
+        pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
+        pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+        pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;
+    }
+    catch(...){
+        cout << "\n\n\n----------- Entrou no Cacth (Ajustar) ------------ " << endl;
+        pack->nMessageType = USER_DISCONNECTED;
+        pack->nTimeStamp = getTimeStamp();
+        pack->strPayload = "Alguém saiu";
+        pack->strUserName = "Não sei quem";
+        pack->strGroupName = "group";
+    }
     return pack;
 }
 
