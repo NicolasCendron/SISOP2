@@ -33,19 +33,9 @@ int main(int argc, char **argv){
     string ip = string(argv[3]);
     string port = string(argv[4]);
     
-
-  
-    //int validou = validateStr(username);
-    // int validouGroupName = validateStr(groupname);
-
-    
-    //exit(1);
-
-    /*if(validateStr(username) && !validateStr(groupname)){
-
-    }*/
-
-
+    if(validateStr(username) == 1 || validateStr(strGroupName) == 1){
+        exit(1);
+    }
 
 
     std::cout << "user: " + username << std::endl;
