@@ -33,9 +33,9 @@ int main(int argc, char **argv){
     string ip = string(argv[3]);
     string port = string(argv[4]);
     
-    //if(validateStr(username) == 1 || validateStr(strGroupName) == 1){
-    //    exit(1);
-    //}
+    if(validateStr(username) == 0 || validateStr(strGroupName) == 0){
+        exit(1);
+    }
 
 
     std::cout << "user: " + username << std::endl;
@@ -89,10 +89,10 @@ int validateStr(string str){
 
     if (errors > 0)
     {
-        return 0;
+        return 0; //teve algum erro no caminho
     }
     
 
-    return 1;
+    return 1; //retornou tudo certo
 }
 
