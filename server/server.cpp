@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <ctype.h>
-#include <curses.h>
+//#include <curses.h>
 #include <semaphore.h>
 //#include "../utils/functions.h"
 #include "headers/server_communication_manager.h"

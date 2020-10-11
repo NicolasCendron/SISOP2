@@ -57,17 +57,6 @@ vector<packet*> arrMessages;
 
 sem_t semaphore_client;
 
- time_t getTimeStamp()
-{
-    //struct timeval tv;
-    //gettimeofday(&tv, NULL);
-    //long long time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-
-    time_t now = time(0);
-    tm *time_now = localtime(&now);
-
-    return now;
-} 
 
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
@@ -189,7 +178,7 @@ void printAllMessages()
                 // cout << "aq1 "  << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << " >> <ENTROU NO GRUPO>" << endl;
+                cout << "[" + pack->strUserName  + "] " << timestamp_to_date(pack->nTimeStamp) << " >> <ENTROU NO GRUPO>" << endl;
                 //cout << "aq1 "  << endl;
             }
         }
@@ -277,57 +266,7 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
 
         
     //cout << "porta::" << portno << '\n';
-    int linha=0;
-    int escolhida = -1;
-    string line;
-    ifstream myfile;
-    ofstream editFile;
-    myfile.open( "../utils/portas.txt");
-    editFile.open( "../utils/portas.txt", fstream::in | fstream::out | fstream::ate | ios::app);
-    if (myfile.is_open())
-    {
-        while ( getline (myfile,line) )
-        {
-            std::size_t pos = line.find(";");  
-            if(pos > 0){
-                //cout << line << '\n';
-                    // position of "live" in str
-                std::string porta = line.substr (0,pos);
-                //std::string status = line.substr ((pos+1),line.length());
-                //cout << porta << '\n';
-                //cout << status[0] << '\n';
-
-                if( stoi(porta) == portno){
-                    //std::string st_txt1 = line;
-                    if(line.find(porta)!=string::npos){
-                        editFile << porta+";0;\n";
-                        escolhida = linha;
-                        //delete_line("../utils/portas.txt",linha);
-                        
-                        //line.replace(line.find(line),line.length(),"");
-                        //line.replace(line.find(porta),line.length(),st_txt2);
-                    
-                    }
-
-                }
-                linha++;
-            }
-            
-        }
-        
-        myfile.close();
-    }
-    else{
-        //cout << "Unable to open file";
-        std::cout << RED << "Err: Unable to open file" << RESET << std::endl;
-        exit(1);
-    }
-    editFile.close();
-    //exit(1);
-    if(escolhida != -1){
-        delete_line("../utils/portas.txt",escolhida);
-        blank_line("../utils/portas.txt");
-    }
+    editPort(portno, 0);
   
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 

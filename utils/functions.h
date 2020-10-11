@@ -16,6 +16,7 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
+#include<semaphore.h>
 
 
 //#include <termios.h>
@@ -35,8 +36,8 @@
 #define PROTOCOL_LONG_SIZE 20
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
 
+sem_t semaphore_file_port;
 
-/*  SOCKETS  */
 
 int writeToSocket(int sockfd, string message){
     
@@ -71,6 +72,7 @@ string timestamp_to_date(time_t timestamp_packet){
     tm *time_now = localtime(&timestamp_packet);
     char buf[80];
 
+    /*
     //std::cout << "timestamp_na funcao:::: " << timestamp_packet << std::endl;
     
     //time(&timestamp_packet);
@@ -90,6 +92,7 @@ string timestamp_to_date(time_t timestamp_packet){
     //std::cout << "ctime:::: " << ctime(&timestamp_packet) << std::endl;
     
     //return ctime(&timestamp_packet);
+    */
     string horas = to_string(time_now->tm_hour);
     string horasCompletas="0";
     if(horas.length() == 1){
@@ -306,9 +309,12 @@ void editPort(int numPorta, int status){
     editFile.close();
     //exit(1);
     if(escolhida != -1){
+        //semaphore_file_port.wait()
         delete_line("../utils/portas.txt",escolhida);
         blank_line("../utils/portas.txt");
     }
+
+   
 }
 
 string padLeft(string strOld,char cPad,int nSize){
