@@ -19,10 +19,12 @@
 #include <vector>
 #include "colors.h"
 #include "functions.h"
+#include <pthread.h>
 
 int NEXT_SEQ = 0;
 char buffer[BUFFER_SIZE] = {0};
 vector<connection*> arrConnection;
+pthread_t ptid; 
 
 
 void error(char *msg) {
@@ -90,8 +92,10 @@ int doNothingWhileListen(int sockfd) {
 int acceptConnection(int sockfd,struct sockaddr_in cli_addr) {
     socklen_t clilen = sizeof(cli_addr);
     int newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen); //Aceita a conexão
-    if (newsockfd < 0)
+    if (newsockfd < 0) {
         std::cout << RED << "ERROR on accept" << RESET << std::endl;
+        return 0;
+    }
 
     return newsockfd;
 }
@@ -249,6 +253,7 @@ void* startListening(void *threadarg) {
 
         int portno = my_data->port;
         int sockfd, newsockfd, clilen;
+        int ret = 0;
         struct sockaddr_in serv_addr, cli_addr;
 
         sockfd = createSocket();
@@ -262,8 +267,12 @@ void* startListening(void *threadarg) {
         }
 
         newsockfd = acceptConnection(sockfd, cli_addr);
-        int ret = handleMessages(newsockfd);
 
+        if(newsockfd) {
+            pthread_create(&ptid, NULL, clientIsAlive, (void *)(&newsockfd));
+            ret = handleMessages(newsockfd);
+        }
+        
         if(ret == -1) {
             break;
         }
@@ -273,4 +282,31 @@ void* startListening(void *threadarg) {
     sem_destroy(&semaphore_file_port);
     sem_destroy(&semaforo_server_comm);
     //pthread_exit(NULL); 
+}
+
+void* clientIsAlive(void *socket) {
+    packet *pack;
+    bool clientKeepAlive = true;
+
+    while(clientKeepAlive) {
+        cout << socket  << " ++++++++++++++++++++++++++" << endl;
+        //pack = readFromSocket((int *)newsockfd);
+
+        /* if(pack == NULL) {
+            return -1;
+        }
+        */
+
+        //cout << pack->strUserName << " Keep Alive!" << endl;
+
+        //Aqui vamos ter as infos do usuario que conectou e gerou essa thread
+        //Ai vamos poder ficar mandando msgs pra ele e aguarndando uma resposta
+
+        //No cliente a gente pode testar se a msg que o server mandou é uma msg
+        // ou um sinal de keep alive, se for, ai ele só sinaliza/manda um pacote
+        // com o tipo da mensagem tipo um USER_KEEP_ALIVE. ai definimos um valor 
+        // tipo 1006
+        usleep(1000000);
+    }
+
 }
