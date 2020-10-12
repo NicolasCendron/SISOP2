@@ -18,7 +18,7 @@
 #include <semaphore.h>
 #include <vector>
 #include "colors.h"
-#include "../utils/functions.h"
+#include "functions.h"
 
 
 void error(char *msg)
@@ -35,7 +35,8 @@ void error(char *msg)
 //   char    sin_zero[8]; /* Not used, must be zero */
 // };
 
-sem_t semaforo_server;
+//sem_t semaforo_server_comm;
+//sem_t semaforo_server_comm;
 struct thread_data
 {
   int thread_id;
@@ -71,8 +72,9 @@ struct sockaddr_in prepForListening(int portno){
 } 
 
 void bindToSocket(int sockfd,struct sockaddr_in  serv_addr){
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) // Faz o bind na porta
-    std::cout << "ERROR on binding" << std::endl;
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){ // Faz o bind na porta
+    std::cout << RED << "ERROR on binding" << RESET << std::endl;
+  }
 }
 
 void printListeningInfo(int portno){
@@ -101,9 +103,16 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr){
 
 
 void writeMessageToFile(packet *pack){
+
+    std::cout << RED << "BLOQUEANDO:: writeMessageToFile" << RESET << std::endl;
+    sem_wait(&semaforo_server_comm);
     std::ofstream outfile;
     outfile.open(pack->strGroupName, std::ios_base::app); // append instead of overwrite
     outfile << serializePacket(pack);
+    sem_post(&semaforo_server_comm);
+    std::cout << GREEN << "LIBERANDO:: writeMessageToFile" << RESET << std::endl;
+
+
 }
 
 vector<packet*> readEntireFile(string strGroupName){
@@ -111,15 +120,17 @@ vector<packet*> readEntireFile(string strGroupName){
   char buffer[PROTOCOL_PACKET_SIZE + 1];
   vector<packet*> arrPacks;
   packet *pack = new packet();
+
+  std::cout << RED << "BLOQUEANDO:: readEntireFile" << RESET << std::endl;
+  sem_wait(&semaforo_server_comm);
   while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE))
   {
     pack = deserializePacket(string(buffer));
     printPacket(pack);
-
-    sem_wait(&semaforo_server);
     arrPacks.push_back(pack);
-    sem_post(&semaforo_server);
   }
+   sem_post(&semaforo_server_comm);
+   std::cout << GREEN << "LIBERANDO:: readEntireFile" << RESET << std::endl;
   return arrPacks;
 }
 
@@ -137,12 +148,16 @@ void sendConnectionFailedMessage(packet *pack, int newsockfd)
 
 void sendMessageToGroup(packet *pack)
 {
+  //ADD SEMA
+   // std::cout << RED << "BLOQUEANDO:: sendMessageToGroup" << RESET << std::endl;
+   // sem_wait(&semaforo_server);
   for(auto oConnection: arrConnection){ 
         if(oConnection->strGroupName.compare(pack->strGroupName) == 0)
         {
             writeToSocket(oConnection->nSocket,serializePacket(pack));
         }
   }
+  
 }
 
 void sendMessageHistoryToClient(string strGroupName, int newsockfd){
@@ -183,14 +198,27 @@ bool handleUserConnection(packet *pack, int newsockfd)
 int handleMessages(int newsockfd)
 {
 
+  
   packet *pack;
   bool bConnectionSuccess = true;
   while(bConnectionSuccess)
   {
+     
+    
     pack = readFromSocket(newsockfd);
   
+    if(pack == NULL){
+      return -1;
+    }
+
+    if(pack->strPayload.empty() || pack->strPayload.length() == 0){
+        std::cout << RED << "Err: Nada informado" << RESET << std::endl;
+        return -1;
+    }
+   
     switch(pack -> nMessageType){
       case USER_MESSAGE:
+      
         writeMessageToFile(pack);
         sendMessageToGroup(pack);
         break;
@@ -214,6 +242,7 @@ int handleMessages(int newsockfd)
     }
     printPacket(pack);
   }
+
  
 }
 
@@ -221,7 +250,11 @@ void* startListening(void *threadarg)
 {
   //readEntireFile(String("group"));
   //return (void*)1;
-
+  std::cout << CYAN << "INIT:: startListening" << RESET << std::endl;
+  sem_init(&semaforo_server_comm,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
+  sem_init(&semaforo_server,0,1);
+  sem_init(&semaphore_file_port,0,1);
+  //int cont =0;
   while(true)
   {
     struct thread_data *my_data;   
@@ -240,10 +273,19 @@ void* startListening(void *threadarg)
       exit(1);
     }
 
-    sem_init(&semaforo_server,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
-
+    
     newsockfd = acceptConnection(sockfd, cli_addr);
-    handleMessages(newsockfd);
+    int ret = handleMessages(newsockfd);
+    if(ret == -1){
+      break;
+    }
+    //cont++;
+
+    
+    
   }
-  pthread_exit(NULL); 
+  sem_destroy(&semaforo_server);
+  sem_destroy(&semaphore_file_port);
+  sem_destroy(&semaforo_server_comm);
+  //pthread_exit(NULL); 
 }

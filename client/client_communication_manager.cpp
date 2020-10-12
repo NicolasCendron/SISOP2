@@ -21,7 +21,7 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
-#include "../utils/functions.h"
+#include "functions.h"
 
 
 // struct  hostent
@@ -55,31 +55,36 @@ int SOCKET_ID = 0;
 string USER_NAME = "";
 vector<packet*> arrMessages;
 
-sem_t semaphore_client;
+//sem_t semaphore_client;
 
 
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
-    printf(" \n >>>> ");
-    fflush(stdout);
+   
+    
     string strUserMessage;
     
-    getline(cin,strUserMessage);
+    while(strUserMessage.empty()){
+         //printf(" \n >>>> ");
+         //fflush(stdout);
+         cout << ">>>>> " << endl;
+        getline(cin,strUserMessage);
+    }   
+    //if(strUserMessage.length() > 0){
 
+        packet *pack = new packet;
 
-    packet *pack = new packet;
-
-    pack->nMessageType = USER_MESSAGE;
-    //pack->nTimeStamp = getTimeStamp();
-    //time_t now = time(0);
-    //tm *time_now = localtime(&now);
-    //std::cout << "timenow: " + to_string(time_now->tm_hour) << std::endl;
-
-    pack->nTimeStamp = getTimeStamp();
-    pack->strPayload =  strUserMessage;
-    pack->strUserName = strUserName;
-    pack->strGroupName = strGroupName;
-    return serializePacket(pack);
+        pack->nMessageType = USER_MESSAGE;
+        pack->nTimeStamp = getTimeStamp();
+        pack->strPayload =  strUserMessage;
+        pack->strUserName = strUserName;
+        pack->strGroupName = strGroupName;
+        return serializePacket(pack);
+    //}
+    
+        string retorno = string("");    
+       return retorno;
+    
     
 }
 
@@ -162,6 +167,8 @@ bool compareBySeq(const packet* a, const packet* b)
 void printAllMessages()
 {   clear();
 
+    //std::cout << RED << "BLOQUEANDO:: printAllMessages" << RESET << std::endl;
+    //sem_wait(&semaphore_client);
     //showPortsFile();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
@@ -193,6 +200,8 @@ void printAllMessages()
         }
         fflush(stdout);
   } 
+  //sem_post(&semaphore_client);
+  //std::cout << GREEN << "LIB:: printAllMessages" << RESET << std::endl;
 }
 
 void handleMessages(packet *pack)
@@ -205,26 +214,32 @@ void handleMessages(packet *pack)
         return;
     }
 
+    //std::cout << RED << "LIB:: handleMessages" << RESET << std::endl;
     //sem_wait(&semaphore_client); //semáforo
     arrMessages.push_back(pack);
     //sem_post(&semaphore_client); //semáforo
+    //std::cout << GREEN << "LIB:: handleMessages" << RESET << std::endl;
+
     printAllMessages();
     
 }
-
 
 
 void* listenForNewMessages(void *threadarg){
     int i = 1;
     //clear();
     //gotoxy(1,1);
+    //int cont =0;
     while(true){   
      if(SOCKET_ID != 0){
         packet *pack  = readFromSocket(SOCKET_ID);
-        cout << "Leu do Socket" << endl;
-        handleMessages(pack);
+        //if(pack != NULL){
         
+            cout << "Leu do Socket" << endl;
+            handleMessages(pack);
+        //}
      }
+     //cont++;
     }
 }
 
@@ -264,10 +279,19 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         fflush(stdout);
         }
 
+    /**
+     *  The sem_destroy() function destroys the unnamed semaphore specified by the sem argument. You can only use this 
+     * function to destroy a semaphore created with the sem_init() function. Additionally, subsequent use of the specified 
+     * semaphore by another semaphore function results in that function failing with errno set to EINVAL. Reinitializing the
+     * semaphore with the sem_init() function allows it to be used again.  
+     **/
         
+    //sem_init(&semaphore_file_port,0,1);
     //cout << "porta::" << portno << '\n';
     editPort(portno, 0);
-  
+    //sem_destroy(&semaphore_file_port);
+
+
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
     while(bTerminate == false)
@@ -279,7 +303,13 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         }
         else
         {   
-            writeToSocket(sockfd,createUserMessage(strUserName,strGroupName)); 
+
+            string mensagemUsuario = createUserMessage(strUserName,strGroupName);
+            if(!mensagemUsuario.empty()){
+                writeToSocket(sockfd,mensagemUsuario); 
+            }else{
+                  std::cout << RED << "Err: Nada informado" << RESET << std::endl;
+            }
             
         }
     }

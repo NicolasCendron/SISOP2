@@ -12,7 +12,7 @@ using namespace std;
 
 int validateStr(string str);
 bool is_number(const std::string& s);
-int showPortsFile();
+int selectPort();
 
 
 struct thread_data
@@ -61,8 +61,9 @@ int main(int argc, char **argv){
         exit(1);
     }
 
-    std::cout << " Escolha uma porta:"  << std::endl;
-    int numPorta = showPortsFile();
+
+    //std::cout << " Escolha uma porta:"  << std::endl;
+    int numPorta = selectPort();
     //std::cout << " Porta :::" + numPorta  << std::endl;
     //exit(1);
 
@@ -75,7 +76,7 @@ int main(int argc, char **argv){
 
 
     int rc = pthread_create(&listenNewMessagesThread, NULL, listenForNewMessages, NULL);
-    connectToServer(stoi(port),ip,username,strGroupName);
+    connectToServer(numPorta,ip,username,strGroupName);
     //connectToServer(port,ip,username,strGroupName);
 
     

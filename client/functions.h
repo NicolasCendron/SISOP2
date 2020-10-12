@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -36,7 +35,8 @@
 #define PROTOCOL_LONG_SIZE 20
 #define PROTOCOL_PACKET_SIZE 3*PROTOCOL_STRING_SIZE + PROTOCOL_INT_SIZE + PROTOCOL_LONG_SIZE
 
-sem_t semaphore_file_port;
+//sem_t semaphore_file_port;
+sem_t semaphore_client_rw;
 
 
 int writeToSocket(int sockfd, string message){
@@ -46,10 +46,17 @@ int writeToSocket(int sockfd, string message){
     fflush(stdin);
     int nMessageLength = message.length();
     int n;
-    n = write(sockfd,message.c_str(),nMessageLength); // Envia para o server
+
+   //sem_wait(&semaphore_client_rw);
+    n = write(sockfd,message.c_str(),PROTOCOL_PACKET_SIZE); // Envia para o server
+    //sem_post(&semaphore_client_rw);
     if (n < 0){
         std::cout << "\nERROR writing connected message" << std::endl;
         fflush(stdout);
+    }
+
+    if(n != PROTOCOL_PACKET_SIZE){
+        std::cout << RED << "\nERROR n != PROTOCOL_PACKET_SIZE " <<  RESET << std::endl;
     }
        
     
@@ -137,10 +144,6 @@ void printPacket(packet * pack){
   std::cout << timestamp_to_date(pack->nTimeStamp)  << std::endl;
  
 }
-
-
-
-
 
 void delete_line(const char *file_name, int n) 
 { 
@@ -270,6 +273,56 @@ int showPortsFile(){
 
 }
 
+
+int selectPort(){
+    string line;
+    ifstream myfile;
+
+    vector<int> portas;
+    myfile.open( "../utils/portas.txt");
+    bool encontrouPorta = false;
+    int numeroPorta = -1;
+    if (myfile.is_open())
+    {
+        while ( getline (myfile,line)  && !encontrouPorta)
+        {
+            //cout << line << '\n';  
+            std::size_t pos = line.find(";");      // position of "live" in str
+            std::string porta = line.substr (0,pos);
+
+            std::string status = line.substr ((pos+1), line.length());
+
+            //cout << porta << '\n';
+            //cout << status << '\n';
+            
+            if (status.compare(0,1,"1") == 0){
+                encontrouPorta = true;
+                numeroPorta = stoi(porta);
+            }
+
+        }
+        
+        myfile.close();
+    }
+    else{
+        //cout << "Unable to open file";
+        std::cout << RED << "Err: Unable to open file" << RESET << std::endl;
+        exit(1);
+    }
+
+
+
+    if(encontrouPorta){
+        return numeroPorta;
+    }
+
+    std::cout << RED << "Err: Não existem mais portas livres" << RESET << std::endl;
+    return -1;
+ 
+
+}
+
+
 /**
  * status = 1  --> então  a porta ta liberada
  * status = 0  --> então  a porta ta ocupada
@@ -277,7 +330,9 @@ int showPortsFile(){
 void editPort(int numPorta, int status){
     int linha=0;
     int escolhida = -1;
-    string line;
+
+    //sem_wait(&semaphore_file_port);
+    string line="";
     ifstream myfile;
     ofstream editFile;
     myfile.open( "../utils/portas.txt");
@@ -313,7 +368,7 @@ void editPort(int numPorta, int status){
         delete_line("../utils/portas.txt",escolhida);
         blank_line("../utils/portas.txt");
     }
-
+    //sem_post(&semaphore_file_port);
    
 }
 
@@ -330,15 +385,35 @@ static inline void ltrim(std::string &s) {
 packet* deserializePacket(string strPack)
 {   int nPointer = 0;
     packet *pack = new packet;
-    string strBuff;
+    string strBuff=string("");
+
+    
+    //std::cout << "::"  << std::endl;
     try{
+        //if(strPack.empty()){
+        //    return NULL;
+        //}
+        
         std::istringstream( strPack.substr(nPointer,PROTOCOL_INT_SIZE) ) >> pack->nMessageType; nPointer+=PROTOCOL_INT_SIZE;
+        std::cout << string(" 1::") <<  pack->nMessageType  << std::endl;
+
+        
         std::istringstream( strPack.substr(nPointer,PROTOCOL_LONG_SIZE) ) >> pack->nTimeStamp; nPointer+=PROTOCOL_LONG_SIZE;
+        std::cout << string(" 2::") <<  pack->nTimeStamp  << std::endl;
+
         pack->strPayload = strPack.substr(nPointer,PROTOCOL_STRING_SIZE);ltrim( pack->strPayload ) ;nPointer+=PROTOCOL_STRING_SIZE;
+        std::cout << string(" 3::") <<  pack->strPayload  << std::endl;
+
+
         pack->strUserName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strUserName) ; nPointer+=PROTOCOL_STRING_SIZE;
+        std::cout << string(" 4::") <<   pack->strUserName  << std::endl;
+
         pack->strGroupName = strPack.substr(nPointer,PROTOCOL_STRING_SIZE); ltrim(pack->strGroupName) ; nPointer+=PROTOCOL_STRING_SIZE;
+        std::cout << string(" 5:") <<  pack->strGroupName  << std::endl;
+
     }
     catch(...){
+        //exit(1);
         cout << "\n\n\n----------- Entrou no Cacth (Ajustar) ------------ " << endl;
         pack->nMessageType = USER_DISCONNECTED;
         pack->nTimeStamp = getTimeStamp();
@@ -351,7 +426,7 @@ packet* deserializePacket(string strPack)
 
 string serializePacket(packet * pack)
 {
-    string serialized;
+    string serialized = string("");
     serialized = serialized + padLeft(to_string(pack->nMessageType),'0',PROTOCOL_INT_SIZE);
     serialized = serialized + padLeft(to_string(pack->nTimeStamp),'0',PROTOCOL_LONG_SIZE);
     serialized = serialized + padLeft(pack->strPayload,' ',PROTOCOL_STRING_SIZE);
@@ -365,12 +440,16 @@ string serializePacket(packet * pack)
 packet* readFromSocket(int newsockfd){
     char * buffer = (char*)malloc(PROTOCOL_PACKET_SIZE);
 
-    int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
-    if (n < 0) 
+    //sem_wait(&semaphore_client_rw);
+    //int n = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
+    if (read(newsockfd,buffer,PROTOCOL_PACKET_SIZE) < 0) 
       std::cout << RED << "ERROR reading from socket" << RESET << std::endl;
-  
-    fflush(stdout);
+    //sem_post(&semaphore_client_rw);
     
-    packet * pack = deserializePacket(string(buffer));
-    return pack;
+    fflush(stdout);
+
+    
+    
+    //packet * pack = deserializePacket(string(buffer));
+    return deserializePacket(string(buffer));
 }
