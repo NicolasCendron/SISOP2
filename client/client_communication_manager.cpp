@@ -162,45 +162,36 @@ bool compareBySeq(const packet* a, const packet* b)
     return a->nTimeStamp < b->nTimeStamp;
 }
 
+void printAllMessages(){   
+    clear();
+    string colorSelfUser = GREEN;
+    string colorOtherUser = BLUE;
 
-void printAllMessages()
-{   clear();
-
-    //std::cout << RED << "BLOQUEANDO:: printAllMessages" << RESET << std::endl;
-    //sem_wait(&semaphore_client);
-    //showPortsFile();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
-    for(auto pack: arrMessages){ 
-      
-       /* cout << pack->nType << endl;
-       cout << pack->strUserName << endl; */
-	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
-            //cout << "username: " << USER_NAME  << endl;
-            //cout << "username(pack): " << pack->strUserName  << endl;
 
-            if(pack->strUserName.compare(USER_NAME) == 0)
-            {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<" >> <ENTROU NO GRUPO>" << endl;
-                // cout << "aq1 "  << endl;
+    for(auto pack: arrMessages){ 
+        string userName = pack->strUserName;
+        string message = pack->strPayload;
+        string messageTime = timestamp_to_date(pack->nTimeStamp);
+
+	    if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
+            if(userName.compare(USER_NAME) == 0){
+                cout << colorSelfUser << "[Você]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "] " << timestamp_to_date(pack->nTimeStamp) << " >> <ENTROU NO GRUPO>" << endl;
-                //cout << "aq1 "  << endl;
+                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
             }
         }
         else{
-        if(pack->strUserName.compare(USER_NAME) == 0)
-            {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) << " >> " << pack->strPayload << endl;
+            if(userName.compare(USER_NAME) == 0){
+                cout << colorSelfUser << "[Você]\t" << messageTime << " >> " << message << RESET << endl;
             }
             else{
-                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << " >> " + pack->strPayload << endl;
+                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> " + message << RESET << endl;
             }
         }
         fflush(stdout);
   } 
-  //sem_post(&semaphore_client);
-  //std::cout << GREEN << "LIB:: printAllMessages" << RESET << std::endl;
 }
 
 void handleMessages(packet *pack)
