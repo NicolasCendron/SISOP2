@@ -152,27 +152,36 @@ void printAllMessages() {
     string colorOtherUser = BLUE;
 
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
-
-    for(auto pack: arrMessages) { 
+    bool printGroupName = true;
+    
+    for(auto pack: arrMessages) {
+        if(printGroupName){
+            cout << BOLDMAGENTA <<"---- Bem-vindo ao grupo " << pack->strGroupName << " ----\n\n" << RESET << endl;
+            printGroupName = false;
+        }
+        
         string userName = pack->strUserName;
         string message = pack->strPayload;
         string messageTime = timestamp_to_date(pack->nTimeStamp);
-
-	    if(pack->nMessageType == USER_CONNECTED_MESSAGE ) {
-            if(userName.compare(USER_NAME) == 0) {
-                cout << colorSelfUser << "[Você]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
-            }
-            else {
-                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
-            }
-        }
-        else {
-            if(userName.compare(USER_NAME) == 0) {
+        
+        switch( pack->nMessageType ){
+            case USER_CONNECTED_MESSAGE:
+                if(userName.compare(USER_NAME) == 0) {
+                    cout << colorSelfUser << "[Você]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
+                }
+                else {
+                    cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
+                }
+                break;
+            
+            case USER_MESSAGE:
+                if(userName.compare(USER_NAME) == 0) {
                 cout << colorSelfUser << "[Você]\t" << messageTime << " >> " << message << RESET << endl;
-            }
-            else {
-                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> " + message << RESET << endl;
-            }
+                }
+                else {
+                    cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> " + message << RESET << endl;
+                }
+                break;
         }
         fflush(stdout);
   } 
