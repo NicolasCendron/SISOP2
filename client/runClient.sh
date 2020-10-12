@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
 make
-./app usuario1 group 127.0.0.1 9901
+./app pedro group 127.0.0.1 9901

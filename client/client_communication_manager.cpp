@@ -77,11 +77,9 @@ string createUserMessage(string strUserName,string strGroupName){
 }
 
 
-string createUserConnectedMessage(string strUserName, string strGroupName){
-
+string createUserConnectedMessage(string strUserName, string strGroupName) {
     packet *pack = new packet;
     pack->nMessageType = USER_CONNECTED_MESSAGE;
-    //pack->timestamp = getTimeStamp();
     pack->nTimeStamp = getTimeStamp();
     pack->strUserName = strUserName;
     pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
@@ -90,17 +88,16 @@ string createUserConnectedMessage(string strUserName, string strGroupName){
     return  serializePacket(pack);
 }
 
-int createSocket(){
+int createSocket() {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);// Cria Socket --  socket(domain, type, protocol);
-    if (sockfd < 0) 
-        {
-            std::cout << RED << "ERROR opening socket" <<  RESET << std::endl;
-            fflush(stdout);
-        }
-        return sockfd;
+    if (sockfd < 0) {
+        std::cout << RED << "ERROR opening socket" <<  RESET << std::endl;
+        fflush(stdout);
+    }
+    return sockfd;
 }
 
-struct hostent * getServerInfo(string host){
+struct hostent * getServerInfo(string host) {
     struct hostent *server;
     server = gethostbyname(host.c_str()); // Pega o endereço do Server
     if (server == NULL) {
@@ -112,8 +109,7 @@ struct hostent * getServerInfo(string host){
     //não tinha q ter um return do server??
 }
 
-struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
-
+struct sockaddr_in prepServerConnection(struct hostent* server, int portno) {
     /*
         typedef struct sockaddr_in {
             #if ...
@@ -148,54 +144,44 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
        /* cout << pack->nType << endl;
        cout << pack->strUserName << endl; */
 
-bool compareBySeq(const packet* a, const packet* b)
-{
+bool compareBySeq(const packet* a, const packet* b) {
     return a->nTimeStamp < b->nTimeStamp;
 }
 
+void printAllMessages() {   
+    clear();
+    string colorSelfUser = GREEN;
+    string colorOtherUser = BLUE;
 
-void printAllMessages()
-{   clear();
-
-    //std::cout << RED << "BLOQUEANDO:: printAllMessages" << RESET << std::endl;
-    //sem_wait(&semaphore_client);
-    //showPortsFile();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
-    for(auto pack: arrMessages){ 
-    
-	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
-            //cout << "username: " << USER_NAME  << endl;
-            //cout << "username(pack): " << pack->strUserName  << endl;
 
-            if(pack->strUserName.compare(USER_NAME) == 0)
-            {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) <<" >> <ENTROU NO GRUPO>" << endl;
-                // cout << "aq1 "  << endl;
+
+    for(auto pack: arrMessages) { 
+        string userName = pack->strUserName;
+        string message = pack->strPayload;
+        string messageTime = timestamp_to_date(pack->nTimeStamp);
+
+	    if(pack->nMessageType == USER_CONNECTED_MESSAGE ) {
+            if(userName.compare(USER_NAME) == 0) {
+                cout << colorSelfUser << "[Você]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
             }
-            else{
-                cout << "[" + pack->strUserName  + "] " << timestamp_to_date(pack->nTimeStamp) << " >> <ENTROU NO GRUPO>" << endl;
-                //cout << "aq1 "  << endl;
+            else {
+                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
             }
         }
-        else{
-        if(pack->strUserName.compare(USER_NAME) == 0)
-            {
-                cout << "[Você] " << timestamp_to_date(pack->nTimeStamp) << " >> " << pack->strPayload << endl;
+        else {
+            if(userName.compare(USER_NAME) == 0) {
+                cout << colorSelfUser << "[Você]\t" << messageTime << " >> " << message << RESET << endl;
             }
-            else{
-                cout << "[" + pack->strUserName  + "]" << timestamp_to_date(pack->nTimeStamp) << " >> " + pack->strPayload << endl;
+            else {
+                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> " + message << RESET << endl;
             }
         }
         fflush(stdout);
   } 
-  //sem_post(&semaphore_client);
-  //std::cout << GREEN << "LIB:: printAllMessages" << RESET << std::endl;
 }
 
-void handleMessages(packet *pack)
-{ 
-
-    
+void handleMessages(packet *pack) { 
     if (pack->nMessageType == USER_MAX_CONNECTIONS){
         clear();
         cout << "Informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
@@ -212,8 +198,7 @@ void handleMessages(packet *pack)
     
 }
 
-
-void* listenForNewMessages(void *threadarg){
+void* listenForNewMessages(void *threadarg) {
     int i = 1;
     //clear();
     //gotoxy(1,1);
@@ -231,23 +216,20 @@ void* listenForNewMessages(void *threadarg){
     }
 }
 
-int connectToServer(int portno, string host, string strUserName, string strGroupName)
-
-{
-  bool bTerminate = false;
-  int sockfd, n;
+int connectToServer(int portno, string host, string strUserName, string strGroupName) {
+    bool bTerminate = false;
+    int sockfd, n;
     struct sockaddr_in serv_addr; // specifies a transport address and port for the AF_INET address family
 
-/*
-        typedef struct hostent {
-            char  *h_name;
-            char  **h_aliases;
-            short h_addrtype;
-            short h_length;
-            char  **h_addr_list;
-        } HOSTENT, *PHOSTENT, *LPHOSTENT;
-*/
-
+    /*
+            typedef struct hostent {
+                char  *h_name;
+                char  **h_aliases;
+                short h_addrtype;
+                short h_length;
+                char  **h_addr_list;
+            } HOSTENT, *PHOSTENT, *LPHOSTENT;
+    */
 
     struct hostent *server; //used by functions to store information about a given host, such as host name, IPv4 address
     string strMessageContent;
@@ -255,8 +237,6 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
 
     sockfd = createSocket();
   
-
-
     server = getServerInfo(host); //127.0.0.1 
     serv_addr = prepServerConnection(server,portno);
     SOCKET_ID = sockfd;
@@ -279,31 +259,24 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
     editPort(portno, 0);
     //sem_destroy(&semaphore_file_port);
 
-
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
-    while(bTerminate == false)
-    {   
-        if(strcmp(buffer,"exit") == 0)
-        {
+    while(bTerminate == false) {   
+        if(strcmp(buffer,"exit") == 0) {
             printf("terminate");
             bTerminate = true;
         }
-        else
-        {   
-
+        else {   
             string mensagemUsuario = createUserMessage(strUserName,strGroupName);
-            if(!mensagemUsuario.empty()){
-                writeToSocket(sockfd,mensagemUsuario); 
-            }else{
-                  std::cout << RED << "Err: Nada informado" << RESET << std::endl;
-            }
             
+            if(!mensagemUsuario.empty()) {
+                writeToSocket(sockfd,mensagemUsuario); 
+            }
+            else {
+                std::cout << RED << "Err: Nada informado" << RESET << std::endl;
+            }  
         }
     }
     close(sockfd);
     return 0;
-
 }
-
-
