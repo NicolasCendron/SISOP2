@@ -39,6 +39,7 @@
 sem_t semaphore_file_port;
 sem_t semaforo_server;
 sem_t semaforo_server_comm;
+sem_t semaforo_connections;
 
 
 int writeToSocket(int sockfd, string message){

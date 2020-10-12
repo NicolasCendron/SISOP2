@@ -58,32 +58,21 @@ vector<packet*> arrMessages;
 //sem_t semaphore_client;
 
 string createUserMessage(string strUserName,string strGroupName){
-    char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
-   
-    
+    char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE); 
     string strUserMessage;
     
     while(strUserMessage.empty()){
-         //printf(" \n >>>> ");
-         //fflush(stdout);
-         cout << ">>>>> " << endl;
+        cout << ">>>>> " << endl;
         getline(cin,strUserMessage);
     }   
-    //if(strUserMessage.length() > 0){
 
-        packet *pack = new packet;
-
-        pack->nMessageType = USER_MESSAGE;
-        pack->nTimeStamp = getTimeStamp();
-        pack->strPayload =  strUserMessage;
-        pack->strUserName = strUserName;
-        pack->strGroupName = strGroupName;
-        return serializePacket(pack);
-    //}
-    
-        string retorno = string("");    
-       return retorno;
-    
+    packet *pack = new packet;
+    pack->nMessageType = USER_MESSAGE;
+    pack->nTimeStamp = getTimeStamp();
+    pack->strPayload =  strUserMessage;
+    pack->strUserName = strUserName;
+    pack->strGroupName = strGroupName;
+    return serializePacket(pack);   
     
 }
 
@@ -155,7 +144,9 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno){
     serv_addr.sin_port = htons(portno);
 
     return serv_addr;
-}
+}  
+       /* cout << pack->nType << endl;
+       cout << pack->strUserName << endl; */
 
 bool compareBySeq(const packet* a, const packet* b)
 {
@@ -171,9 +162,7 @@ void printAllMessages()
     //showPortsFile();
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
     for(auto pack: arrMessages){ 
-      
-       /* cout << pack->nType << endl;
-       cout << pack->strUserName << endl; */
+    
 	  if(pack->nMessageType == USER_CONNECTED_MESSAGE ){
             //cout << "username: " << USER_NAME  << endl;
             //cout << "username(pack): " << pack->strUserName  << endl;

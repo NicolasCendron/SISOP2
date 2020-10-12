@@ -53,6 +53,7 @@ int createSocket(){
 }
 
 vector<connection*> arrConnection;
+
 int NEXT_SEQ = 0;
 
 int getNextSeq()
@@ -149,14 +150,16 @@ void sendConnectionFailedMessage(packet *pack, int newsockfd)
 void sendMessageToGroup(packet *pack)
 {
   //ADD SEMA
-   // std::cout << RED << "BLOQUEANDO:: sendMessageToGroup" << RESET << std::endl;
-   // sem_wait(&semaforo_server);
+   std::cout << RED << "BLOQUEANDO:: sendMessageToGroup" << RESET << std::endl;
+   sem_wait(&semaforo_connections);
   for(auto oConnection: arrConnection){ 
         if(oConnection->strGroupName.compare(pack->strGroupName) == 0)
         {
             writeToSocket(oConnection->nSocket,serializePacket(pack));
         }
   }
+  std::cout << GREEN << "LIBERANDO:: sendMessageToGroup" << RESET << std::endl;
+   sem_post(&semaforo_connections);
   
 }
 
@@ -254,6 +257,8 @@ void* startListening(void *threadarg)
   sem_init(&semaforo_server_comm,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
   sem_init(&semaforo_server,0,1);
   sem_init(&semaphore_file_port,0,1);
+  sem_init(&semaforo_connections,0,1);
+  
   //int cont =0;
   while(true)
   {
@@ -287,5 +292,6 @@ void* startListening(void *threadarg)
   sem_destroy(&semaforo_server);
   sem_destroy(&semaphore_file_port);
   sem_destroy(&semaforo_server_comm);
+  sem_destroy(&semaforo_connections);
   //pthread_exit(NULL); 
 }
