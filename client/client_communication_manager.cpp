@@ -57,7 +57,6 @@ vector<packet*> arrMessages;
 
 //sem_t semaphore_client;
 
-
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE);
    
