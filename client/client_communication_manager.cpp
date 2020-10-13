@@ -148,9 +148,15 @@ void printAllMessages() {
     string colorOtherUser = BLUE;
 
     std::sort(arrMessages.begin(), arrMessages.end(), compareBySeq);
+    bool printGroupName = true;
 
 
-    for(auto pack: arrMessages) { 
+    for(auto pack: arrMessages) {
+        if(printGroupName) {
+            cout << BOLDMAGENTA <<"---- Bem-vindo ao grupo " << pack->strGroupName << " ----\n\n" << RESET << endl;
+            printGroupName = false;
+        }
+
         string userName = pack->strUserName;
         string message = pack->strPayload;
         string messageTime = timestamp_to_date(pack->nTimeStamp);

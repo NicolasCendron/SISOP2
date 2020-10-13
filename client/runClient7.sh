@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
 make
-./app nicolas asMina 127.0.0.1 9903
+./app Pedro AniversarioMaria 127.0.0.1 9907

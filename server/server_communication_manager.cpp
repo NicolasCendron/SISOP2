@@ -53,10 +53,6 @@ int createSocket() {
     return sockfd;
 }
 
-vector<connection*> arrConnection;
-
-int NEXT_SEQ = 0;
-
 int getNextSeq()
 {
   ++NEXT_SEQ;

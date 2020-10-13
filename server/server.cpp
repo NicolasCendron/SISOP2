@@ -11,7 +11,7 @@
 #include <fstream>
 using namespace std;
 
-#define NUM_THREADS 3
+#define NUM_THREADS 200
 
 struct thread_data
 {
