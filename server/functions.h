@@ -31,6 +31,7 @@
 #define USER_EXIT_GROUP 1003
 #define USER_MAX_CONNECTIONS 1004
 #define ASK_SEQ 1005
+#define USER_KEEP_ALIVE 1006
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_LONG_SIZE 20
@@ -421,7 +422,7 @@ packet* deserializePacket(string strPack)
         
         std::terminate();   
         cout << "\n\n\n----------- Entrou no Cacth (Ajustar) ------------ " << endl;
-        pack->nMessageType = USER_DISCONNECTED;
+        pack->nMessageType = USER_EXIT_GROUP;
         pack->nTimeStamp = getTimeStamp();
         pack->strPayload = "Server caiu";
         pack->strUserName = "SERVER";

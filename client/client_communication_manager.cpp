@@ -22,6 +22,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "functions.h"
+#include <pthread.h>
 
 
 // struct  hostent
@@ -54,6 +55,11 @@
 int SOCKET_ID = 0;
 string USER_NAME = "";
 vector<packet*> arrMessages;
+pthread_t ptid;
+
+string strUserNameGlobal;
+string strGroupNameGlobal;
+int sockfdGlobal;
 
 //sem_t semaphore_client;
 
@@ -83,6 +89,17 @@ string createUserConnectedMessage(string strUserName, string strGroupName) {
     pack->nTimeStamp = getTimeStamp();
     pack->strUserName = strUserName;
     pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
+    pack->strGroupName = strGroupName;
+
+    return  serializePacket(pack);
+}
+
+string createKeepAliveMessage(string strUserName,string strGroupName) {
+    packet *pack = new packet;
+    pack->nMessageType = USER_KEEP_ALIVE;
+    pack->nTimeStamp = getTimeStamp();
+    pack->strUserName = strUserName;
+    pack->strPayload = "I'am alive!";
     pack->strGroupName = strGroupName;
 
     return  serializePacket(pack);
@@ -147,7 +164,7 @@ bool compareBySeq(const packet* a, const packet* b) {
 }
 
 void printAllMessages() {   
-    clear();
+    //clear();
     string colorSelfUser = GREEN;
     string colorOtherUser = BLUE;
 
@@ -222,6 +239,33 @@ void* listenForNewMessages(void *threadarg) {
     }
 }
 
+void* sendKeepAlive(void *socket) {
+    packet *pack;
+    bool clientKeepAlive = true;
+
+    string strUserName = strUserNameGlobal;
+    string strGroupName = strGroupNameGlobal;
+    int socketId = sockfdGlobal;
+
+    while(clientKeepAlive) {
+        cout << socketId << endl;
+        string mensagemUsuario = createKeepAliveMessage(strUserName,strGroupName);
+          cout << mensagemUsuario << endl;  
+        if(!mensagemUsuario.empty()) {
+            writeToSocket(socketId,mensagemUsuario);
+            cout << "Escrevi a mensagem no socket" << endl;
+
+        }
+        else {
+            std::cout << RED << "Err: Sem keep alive" << RESET << std::endl;
+        } 
+
+        usleep(1000000);
+    }
+
+    close(socketId);
+}
+
 int connectToServer(int portno, string host, string strUserName, string strGroupName) {
     bool bTerminate = false;
     int sockfd, n;
@@ -267,6 +311,12 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
 
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
+    int parametro = 0;
+    strUserNameGlobal = strUserName;
+    strGroupNameGlobal = strGroupName;
+    sockfdGlobal = sockfd;
+    pthread_create(&ptid, NULL, sendKeepAlive, (void *)(&parametro));
+
     while(bTerminate == false) {   
         if(strcmp(buffer,"exit") == 0) {
             printf("terminate");
@@ -274,7 +324,6 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
         }
         else {   
             string mensagemUsuario = createUserMessage(strUserName,strGroupName);
-            
             if(!mensagemUsuario.empty()) {
                 writeToSocket(sockfd,mensagemUsuario); 
             }

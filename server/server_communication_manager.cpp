@@ -26,6 +26,8 @@ char buffer[BUFFER_SIZE] = {0};
 vector<connection*> arrConnection;
 pthread_t ptid; 
 
+int idSocket;
+
 
 void error(char *msg) {
     perror(msg);
@@ -230,6 +232,16 @@ int handleMessages(int newsockfd) {
                 bConnectionSuccess = false;
                 break;
 
+            case USER_EXIT_GROUP:
+                //writeMessageToFile(pack);
+                //sendMessageToGroup(pack);
+                bConnectionSuccess = false;
+            break;
+
+            case USER_KEEP_ALIVE:
+                 cout << "RECEBI MENSAGEM KEEP ALIVE" << endl;
+                 break;
+
             default:
                 cout << "Tipo de mensagem não identificado" << endl;
 
@@ -269,11 +281,13 @@ void* startListening(void *threadarg) {
         newsockfd = acceptConnection(sockfd, cli_addr);
 
         if(newsockfd) {
-            pthread_create(&ptid, NULL, clientIsAlive, (void *)(&newsockfd));
+            idSocket = newsockfd;
+            //pthread_create(&ptid, NULL, clientIsAlive, (void *)(&newsockfd));
             ret = handleMessages(newsockfd);
         }
         
         if(ret == -1) {
+            cout<< "Usuário saiu--------------------------" << endl;
             break;
         }
     }
@@ -288,14 +302,23 @@ void* clientIsAlive(void *socket) {
     packet *pack;
     bool clientKeepAlive = true;
 
+    int socketId = idSocket;
+
+    
     while(clientKeepAlive) {
-        cout << socket  << " ++++++++++++++++++++++++++" << endl;
-        //pack = readFromSocket((int *)newsockfd);
+        cout<< "enntrou--------------------------" << endl;
+        //handleMessages(socketId);
+
+    
+        /* if(pack = readFromSocket(socketId)){
+            cout << pack->strUserName  << " ++++++++++++++++++++++++++" << endl;
+        } */
 
         /* if(pack == NULL) {
             return -1;
         }
         */
+       
 
         //cout << pack->strUserName << " Keep Alive!" << endl;
 
