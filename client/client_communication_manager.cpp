@@ -181,9 +181,7 @@ void handleMessages(packet *pack) {
         cout << "Informamos que o número máximo de conexões simultâneas para um mesmo usuário foi atingido" << endl;
         return;
     }
-
     arrMessages.push_back(pack);
-
     printAllMessages();
 }
 
