@@ -55,8 +55,6 @@ int SOCKET_ID = 0;
 string USER_NAME = "";
 vector<packet*> arrMessages;
 
-//sem_t semaphore_client;
-
 string createUserMessage(string strUserName,string strGroupName){
     char* buffer = (char*)malloc(PROTOCOL_STRING_SIZE); 
     string strUserMessage;
@@ -82,7 +80,7 @@ string createUserConnectedMessage(string strUserName, string strGroupName) {
     pack->nMessageType = USER_CONNECTED_MESSAGE;
     pack->nTimeStamp = getTimeStamp();
     pack->strUserName = strUserName;
-    pack->strPayload = strUserName;//strUserName.substr(0,strUserName.length());
+    pack->strPayload = strUserName;
     pack->strGroupName = strGroupName;
 
     return  serializePacket(pack);
@@ -105,8 +103,6 @@ struct hostent * getServerInfo(string host) {
         fflush(stdout);
         exit(0);
     }
-
-    //não tinha q ter um return do server??
 }
 
 struct sockaddr_in prepServerConnection(struct hostent* server, int portno) {
@@ -140,9 +136,7 @@ struct sockaddr_in prepServerConnection(struct hostent* server, int portno) {
     serv_addr.sin_port = htons(portno);
 
     return serv_addr;
-}  
-       /* cout << pack->nType << endl;
-       cout << pack->strUserName << endl; */
+} 
 
 bool compareBySeq(const packet* a, const packet* b) {
     return a->nTimeStamp < b->nTimeStamp;
@@ -188,31 +182,17 @@ void handleMessages(packet *pack) {
         return;
     }
 
-    //std::cout << RED << "LIB:: handleMessages" << RESET << std::endl;
-    //sem_wait(&semaphore_client); //semáforo
     arrMessages.push_back(pack);
-    //sem_post(&semaphore_client); //semáforo
-    //std::cout << GREEN << "LIB:: handleMessages" << RESET << std::endl;
 
     printAllMessages();
-    
 }
 
 void* listenForNewMessages(void *threadarg) {
-    int i = 1;
-    //clear();
-    //gotoxy(1,1);
-    //int cont =0;
     while(true){   
      if(SOCKET_ID != 0){
         packet *pack  = readFromSocket(SOCKET_ID);
-        //if(pack != NULL){
-        
-            cout << "Leu do Socket" << endl;
             handleMessages(pack);
-        //}
-     }
-     //cont++;
+        }
     }
 }
 
@@ -253,11 +233,8 @@ int connectToServer(int portno, string host, string strUserName, string strGroup
      * semaphore by another semaphore function results in that function failing with errno set to EINVAL. Reinitializing the
      * semaphore with the sem_init() function allows it to be used again.  
      **/
-        
-    //sem_init(&semaphore_file_port,0,1);
-    //cout << "porta::" << portno << '\n';
+       
     editPort(portno, 0);
-    //sem_destroy(&semaphore_file_port);
 
     writeToSocket(sockfd,createUserConnectedMessage(strUserName,strGroupName));
 
