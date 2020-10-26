@@ -31,6 +31,7 @@
 #define USER_EXIT_GROUP 1003
 #define USER_MAX_CONNECTIONS 1004
 #define ASK_SEQ 1005
+#define SERVER_DISCONNECTED 1006
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_LONG_SIZE 20
@@ -422,7 +423,7 @@ packet* deserializePacket(string strPack)
         
         std::terminate();   
         cout << "\n\n\n----------- Entrou no Cacth (Ajustar) ------------ " << endl;
-        pack->nMessageType = USER_DISCONNECTED;
+        pack->nMessageType = SERVER_DISCONNECTED;
         pack->nTimeStamp = getTimeStamp();
         pack->strPayload = "Server caiu";
         pack->strUserName = "SERVER";
@@ -449,15 +450,15 @@ packet* readFromSocket(int newsockfd){
 
  //std::cout << RED << "BLOQUEANDO:: readFromSocket" << RESET << std::endl;
     //sem_wait(&semaforo_server);
-    if (read(newsockfd,buffer,PROTOCOL_PACKET_SIZE) < 0) 
+    if (read(newsockfd,buffer,PROTOCOL_PACKET_SIZE) < 0) {
       std::cout << RED << "ERROR reading from socket" << RESET << std::endl;
+      return NULL;   
+    }
     //sem_post(&semaforo_server);
     //std::cout << GREEN << "LIBERADNO:: readFromSocket" << RESET << std::endl;
     
     fflush(stdout);
 
-    
-    
     //packet * pack = deserializePacket(string(buffer));
     return deserializePacket(string(buffer));
 }

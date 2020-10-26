@@ -30,6 +30,7 @@
 #define USER_EXIT_GROUP 1003
 #define USER_MAX_CONNECTIONS 1004
 #define ASK_SEQ 1005
+#define SERVER_DISCONNECTED 1006
 #define PROTOCOL_INT_SIZE 10
 #define PROTOCOL_STRING_SIZE 140
 #define PROTOCOL_LONG_SIZE 20
@@ -388,7 +389,7 @@ packet* deserializePacket(string strPack)
     string strBuff=string("");
 
     
-    //std::cout << "::"  << std::endl;
+
     try{
         //if(strPack.empty()){
         //    return NULL;
@@ -415,10 +416,10 @@ packet* deserializePacket(string strPack)
     catch(...){
         //exit(1);
         cout << "\n\n\n----------- Entrou no Cacth (Ajustar) ------------ " << endl;
-        pack->nMessageType = USER_DISCONNECTED;
+        pack->nMessageType = SERVER_DISCONNECTED;
         pack->nTimeStamp = getTimeStamp();
-        pack->strPayload = "Alguém saiu";
-        pack->strUserName = "Não sei quem";
+        pack->strPayload = "Server caiu";
+        pack->strUserName = "SERVER";
         pack->strGroupName = "group";
     }
     return pack;

@@ -193,15 +193,34 @@ bool handleUserConnection(packet *pack, int newsockfd) {
     return true;
 }
 
+packet* removeClientFromConnections(int nSocketDesconectado){
+    packet *pack = new packet();
+    vector<connection*> newArrConnection;
+    for(auto oConnection: arrConnection){ 
+        if(oConnection->nSocket != nSocketDesconectado)
+        {
+            newArrConnection.push_back(oConnection);
+        }
+        else{
+            pack->nMessageType = USER_DISCONNECTED;
+            pack->nTimeStamp = getTimeStamp();
+            pack->strPayload = oConnection->strUserName;
+            pack->strUserName = "SERVER";
+            pack->strGroupName = oConnection->strGroupName;
+        }
+  }
+    arrConnection = newArrConnection;
+    return pack;
+}
+
 int handleMessages(int newsockfd) {
     packet *pack;
     bool bConnectionSuccess = true;
     
     while(bConnectionSuccess) {
         pack = readFromSocket(newsockfd);
-
         if(pack == NULL) {
-            return -1;
+            pack = removeClientFromConnections(newsockfd);
         }
 
         if(pack->strPayload.empty() || pack->strPayload.length() == 0) {
@@ -228,8 +247,8 @@ int handleMessages(int newsockfd) {
                 break;
 
             case USER_DISCONNECTED:
-                //writeMessageToFile(pack);
-                //sendMessageToGroup(pack);
+                writeMessageToFile(pack);
+                sendMessageToGroup(pack);
                 bConnectionSuccess = false;
                 break;
 

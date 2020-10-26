@@ -161,6 +161,15 @@ void printAllMessages() {
         string message = pack->strPayload;
         string messageTime = timestamp_to_date(pack->nTimeStamp);
 
+        if(pack->nMessageType == SERVER_DISCONNECTED){
+                cout << RED << "[SERVER]" << messageTime << " >> <SERVER IS GOING DOWN>" << RESET << endl;
+                exit(-1);
+        }
+        if(pack->nMessageType == USER_DISCONNECTED){
+                cout << colorOtherUser << "[" + userName  + "]\t" << messageTime << " >> <" << message << " SAIU DO GRUPO>" << RESET << endl;
+                continue;
+        }
+
 	    if(pack->nMessageType == USER_CONNECTED_MESSAGE ) {
             if(userName.compare(USER_NAME) == 0) {
                 cout << colorSelfUser << "[Você]\t" << messageTime << " >> <ENTROU NO GRUPO>" << RESET << endl;
