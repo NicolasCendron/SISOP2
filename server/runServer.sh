@@ -1,4 +1,4 @@
 #!/bin/sh
-make clean
-make
+make -f MakeServer clean
+make -f MakeServer
 ./server "5001"

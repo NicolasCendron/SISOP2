@@ -7,7 +7,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "headers/server_communication_manager.h"
-#include "headers/packet.h"
+#include "packet.h"
+#include "functions.h"
 #include "headers/connection.h"
 #include <arpa/inet.h>
 #include <algorithm> 
@@ -18,12 +19,13 @@
 #include <semaphore.h>
 #include <vector>
 #include "colors.h"
-#include "functions.h"
 
 int NEXT_SEQ = 0;
 char buffer[BUFFER_SIZE] = {0};
 vector<connection*> arrConnection;
 
+
+vector<packet*> handleDataBaseMessages();
 
 void error(char *msg) {
     perror(msg);
@@ -97,42 +99,53 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr) {
     return newsockfd;
 }
 
-void writeMessageToFile(packet *pack) {
-    std::cout << RED << "BLOQUEANDO:: writeMessageToFile" << RESET << std::endl;
-    sem_wait(&semaforo_server_comm);
-    std::ofstream outfile;
-    outfile.open(pack->strGroupName, std::ios_base::app); // append instead of overwrite
-    outfile << serializePacket(pack);
-    sem_post(&semaforo_server_comm);
-    std::cout << GREEN << "LIBERANDO:: writeMessageToFile" << RESET << std::endl;
+int getMasterDBSocket(){
+    ifstream file("database/masterDBNSocket");
+    int nSocket;
+    if (file >> nSocket)
+    {
+        return nSocket;
+    }
+    return 0; 
 }
 
-vector<packet*> readEntireFile(string strGroupName) {
+void sendMessageToDataBase(packet *pack) {
+    std::cout << RED << "BLOQUEANDO:: sendMessageToDataBase" << RESET << std::endl;
+    sem_wait(&semaforo_server_comm);
+    int nMasterSocket = getMasterDBSocket();
+    string mensagemUsuario = serializePacket(pack);       
+    if(!mensagemUsuario.empty()) {
+        writeToSocket(nMasterSocket,mensagemUsuario); 
+    }
+    sem_post(&semaforo_server_comm);
+    std::cout << GREEN << "LIBERANDO:: sendMessageToDataBase" << RESET << std::endl;
+}
+
+vector<packet*> requestMessageHistoryFromDatabase(string strGroupName) {
     ifstream file(strGroupName.c_str());
     char buffer[PROTOCOL_PACKET_SIZE + 1];
     vector<packet*> arrPacks;
-    packet *pack = new packet();
+    packet *packRequestHistory = new packet();
+    packet *packResponse = new packet();
 
-    std::cout << RED << "BLOQUEANDO:: readEntireFile" << RESET << std::endl;
+    std::cout << RED << "BLOQUEANDO:: requestMessageHistoryFromDatabase" << RESET << std::endl;
     sem_wait(&semaforo_server_comm);
-
-    while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE)) {
-        pack = deserializePacket(string(buffer));
-        printPacket(pack);
-        arrPacks.push_back(pack);
+    int nMasterSocket = getMasterDBSocket();
+    packRequestHistory->nMessageType = READ_FROM_FILE;
+    packRequestHistory->strGroupName = strGroupName;
+    packRequestHistory->strPayload = strGroupName;
+    string mensagemUsuario = serializePacket(packRequestHistory);       
+    if(!mensagemUsuario.empty()) {
+        writeToSocket(nMasterSocket,mensagemUsuario); 
     }
+   
+    arrPacks = handleDataBaseMessages();
 
     sem_post(&semaforo_server_comm);
-    std::cout << GREEN << "LIBERANDO:: readEntireFile" << RESET << std::endl;
+    std::cout << GREEN << "LIBERANDO:: requestMessageHistoryFromDatabase" << RESET << std::endl;
 
     return arrPacks;
 }
-
-// void sendSequenceNumber(packet *pack, int newsockfd)
-// {
-//   pack-> nSeq = getNextSeq();
-//   writeToSocket(newsockfd,serializePacket(pack));
-// }
 
 void sendConnectionFailedMessage(packet *pack, int newsockfd) {
     pack-> nMessageType = USER_MAX_CONNECTIONS;
@@ -157,7 +170,7 @@ void sendMessageToGroup(packet *pack)
 
 
 void sendMessageHistoryToClient(string strGroupName, int newsockfd) {
-    vector<packet*> arrPacks = readEntireFile(strGroupName);
+    vector<packet*> arrPacks = requestMessageHistoryFromDatabase(strGroupName);
 
     for(auto pack: arrPacks){ 
         writeToSocket(newsockfd,serializePacket(pack));
@@ -213,7 +226,31 @@ packet* removeClientFromConnections(int nSocketDesconectado){
     return pack;
 }
 
-int handleMessages(int newsockfd) {
+vector<packet*> handleDataBaseMessages() {
+    vector<packet*> arrPacks;
+    int newsockfd = getMasterDBSocket();
+    packet *pack;
+    bool bConnectionSuccess = true;
+    while(bConnectionSuccess) {
+        pack = readFromSocket(newsockfd);
+        if(pack == NULL) {
+            return arrPacks;;
+        }
+        switch(pack -> nMessageType) {
+            case USER_MESSAGE:
+                arrPacks.push_back(pack);
+                break;
+            case MESSAGE_LIST_END:
+                return arrPacks;
+                break;
+            default:
+                cout << "Tipo de mensagem não identificado" << endl;
+
+        }
+    }
+}
+
+int handleUserMessages(int newsockfd) {
     packet *pack;
     bool bConnectionSuccess = true;
     
@@ -230,7 +267,7 @@ int handleMessages(int newsockfd) {
 
         switch(pack -> nMessageType) {
             case USER_MESSAGE:
-                writeMessageToFile(pack);
+                sendMessageToDataBase(pack);
                 sendMessageToGroup(pack);
                 break;
 
@@ -239,7 +276,7 @@ int handleMessages(int newsockfd) {
                 if(bConnectionSuccess) {
                     sendMessageHistoryToClient(pack->strGroupName,newsockfd);
                     sendMessageToGroup(pack);
-                    writeMessageToFile(pack);
+                    sendMessageToDataBase(pack);
                 }
                 else {
                     sendConnectionFailedMessage(pack,newsockfd);
@@ -247,7 +284,7 @@ int handleMessages(int newsockfd) {
                 break;
 
             case USER_DISCONNECTED:
-                writeMessageToFile(pack);
+                sendMessageToDataBase(pack);
                 sendMessageToGroup(pack);
                 bConnectionSuccess = false;
                 break;
@@ -260,13 +297,13 @@ int handleMessages(int newsockfd) {
 }
 
 void* startListening(void *threadarg) {
-    //readEntireFile(String("group"));
+    //requestMessageHistoryFromDatabase(String("group"));
     //return (void*)1;
     std::cout << CYAN << "INIT:: startListening" << RESET << std::endl;
     sem_init(&semaforo_server_comm,0,1);  // nome do semáforo -- 0 pq compartilha o semáforo entre threads (1 é para o caso de compartilhar entre processos) -- num threads simultaneas
     sem_init(&semaforo_server,0,1);
     sem_init(&semaphore_file_port,0,1);
-      sem_init(&semaforo_connections,0,1);
+    sem_init(&semaforo_connections,0,1);
     //int cont =0;
 
     while(true) {
@@ -288,7 +325,7 @@ void* startListening(void *threadarg) {
         }
 
         newsockfd = acceptConnection(sockfd, cli_addr);
-        int ret = handleMessages(newsockfd);
+        int ret = handleUserMessages(newsockfd);
 
         if(ret == -1) {
             break;

@@ -1,3 +1,5 @@
+#ifndef FUNCTION
+#define FUNCTION 1
 #include <iostream>
 #include <string>
 #include <stdio.h>
@@ -16,12 +18,17 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
-#include<semaphore.h>
-
+#include <semaphore.h>
+using namespace std;
 
 //#include <termios.h>
 #include "../client/colors.h"
 
+#define NUMBER_OF_REPLICAS 1
+#define INITIAL_PORT_REPLICA 7000
+#define READ_FROM_FILE 2000
+#define WRITE_TO_FILE 2001
+#define MESSAGE_LIST_END 2002
 
 
 #define BUFFER_SIZE 2560
@@ -40,6 +47,7 @@
 sem_t semaphore_file_port;
 sem_t semaforo_server;
 sem_t semaforo_server_comm;
+sem_t semaforo_replica_comm;
 sem_t semaforo_connections;
 
 
@@ -462,3 +470,5 @@ packet* readFromSocket(int newsockfd){
     //packet * pack = deserializePacket(string(buffer));
     return deserializePacket(string(buffer));
 }
+
+#endif

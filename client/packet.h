@@ -13,13 +13,3 @@ string strPayload; // Dados da mensagem
 string strUserName; // Nome do User
 string strGroupName; //Nome do Group
 } packet;
-
-
-
-/*
-typedef struct __conn{
-    int nSocket; //número do socket
-    string strUsername; // nome do usuário
-    string strGroupname; // nome do grupo
-}conn;
-*/

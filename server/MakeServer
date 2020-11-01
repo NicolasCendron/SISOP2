@@ -1,0 +1,6 @@
+server: server.cpp server_communication_manager.o
+	g++ -pthread server.cpp server_communication_manager.o -std=gnu++11 -o server
+server_communication_manager.cpp:
+	g++ -c app server_communication_manager.cpp -std=gnu++11
+clean:
+	rm server server_communication_manager.o
