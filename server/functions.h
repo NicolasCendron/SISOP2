@@ -24,7 +24,7 @@ using namespace std;
 //#include <termios.h>
 #include "../client/colors.h"
 
-#define NUMBER_OF_REPLICAS 1
+#define NUMBER_OF_REPLICAS 3
 #define INITIAL_PORT_REPLICA 7000
 #define READ_FROM_FILE 2000
 #define WRITE_TO_FILE 2001
