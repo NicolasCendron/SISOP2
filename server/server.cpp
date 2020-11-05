@@ -21,7 +21,7 @@
 #include <strings.h>
 using namespace std;
 
-#define NUMBER_OF_REPLICAS 1
+#define NUMBER_OF_REPLICAS 3
 #define INITIAL_PORT_REPLICA 7000
 #define READ_FROM_FILE 2000
 #define WRITE_TO_FILE 2001
@@ -88,9 +88,12 @@ int connectToReplicas() {
     
         arrReplicasNSock.push_back(sockfd);
     }
-        std::ofstream masterDB;
-        masterDB.open("database/masterDBNSocket", std::ios_base::out); // append instead of overwrite
-        masterDB << to_string(arrReplicasNSock[0]);
+        std::ofstream masterDBNSock;
+        masterDBNSock.open("database/masterDBNSocket", std::ios_base::out); // append instead of overwrite
+        masterDBNSock << to_string(arrReplicasNSock[0]);
+        std::ofstream masterDBPort;
+        masterDBPort.open("database/masterDBPort", std::ios_base::out); // append instead of overwrite
+        masterDBPort << to_string(INITIAL_PORT_REPLICA);
 
     return 0;
 }
