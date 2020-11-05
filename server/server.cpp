@@ -22,7 +22,7 @@
 using namespace std;
 
 #define NUMBER_OF_REPLICAS 3
-#define INITIAL_PORT_REPLICA 7000
+#define INITIAL_PORT_REPLICA 12000
 #define READ_FROM_FILE 2000
 #define WRITE_TO_FILE 2001
 
@@ -39,8 +39,6 @@ sem_t semaphore_server;
 
 pthread_t listeningThreads[NUM_THREADS];
 struct thread_data td[NUM_THREADS];
-
-vector<int> arrReplicasNSock;
 
 struct sockaddr_in prepServerConnection(struct hostent* server, int portno) {
 
@@ -69,7 +67,7 @@ int extern createSocket();
 
 int connectToReplicas() {
     bool bTerminate = false;
-    int sockfd, n;
+    int sockfd, n,port;
     struct sockaddr_in serv_addr; 
 
     struct hostent *server;
@@ -77,7 +75,7 @@ int connectToReplicas() {
     char buffer[BUFFER_SIZE];
     for(int cont = 0; cont < NUMBER_OF_REPLICAS; cont ++){ 
         sockfd = createSocket();
-        cout << "Conectado ao DB na porta : " << INITIAL_PORT_REPLICA + cont <<endl;
+        cout << YELLOW << "Conectado ao DB na porta : " << INITIAL_PORT_REPLICA + cont <<endl;
         server = getServerInfo("127.0.0.1"); //127.0.0.1 
         serv_addr = prepServerConnection(server,INITIAL_PORT_REPLICA + cont);
         if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) //Conecta
@@ -85,15 +83,9 @@ int connectToReplicas() {
             std::cout << RED << "\n ERROR connecting" << RESET << std::endl;
             fflush(stdout);
         }
-    
-        arrReplicasNSock.push_back(sockfd);
+        port = INITIAL_PORT_REPLICA + cont;
+        addReplicaNSock(port,sockfd);
     }
-        std::ofstream masterDBNSock;
-        masterDBNSock.open("database/masterDBNSocket", std::ios_base::out); // append instead of overwrite
-        masterDBNSock << to_string(arrReplicasNSock[0]);
-        std::ofstream masterDBPort;
-        masterDBPort.open("database/masterDBPort", std::ios_base::out); // append instead of overwrite
-        masterDBPort << to_string(INITIAL_PORT_REPLICA);
 
     return 0;
 }
@@ -128,11 +120,6 @@ int main(int argc, char **argv){
     myfile.close();
     //exit(1);
     pthread_exit(NULL); 
-    for(auto nSock: arrReplicasNSock){
-        close(nSock);
-    }
-
-
 
 }
 

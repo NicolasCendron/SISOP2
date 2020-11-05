@@ -22,10 +22,14 @@ struct thread_data
 
 int MAIN_REPLICA_PORT = 0;
 int MAIN_REPLICA_ALIVE = 1;
-int SIMULATE_ERROR = 1;
+int SIMULATE_ONE_DEATH = 1;
+int SIMULATE_ALL_DEATHS = 0;
 int VOTING_STARTED = 0;
 int VOTE_STARTER = 0;
 int NEXT_TO_VOTE = 0;
+int BEST_CANDIDATE = 0;
+int MAX_VOTING_CHANCES = 3;
+int VOTING_CHANCES_USED = 0;
 sem_t semaphore_server;
 
 
@@ -102,7 +106,7 @@ vector<packet*> sendEntireFile(string strGroupName, int nSocket) {
     packet *pack = new packet();
 
     std::cout << RED << "BLOQUEANDO:: sendEntireFile" << RESET << std::endl;
-    sem_wait(&semaforo_replica_comm);
+    //sem_wait(&semaforo_replica_comm);
 
     while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE)) {
         pack = deserializePacket(string(buffer));
@@ -129,6 +133,9 @@ int handleRequisitions(int newsockfd) {
     bool bConnectionSuccess = true;
     while(bConnectionSuccess) {
         pack = readFromSocket(newsockfd);
+        if(pack == NULL) {
+            close(newsockfd);
+        }
 
         if(pack->strPayload.empty() || pack->strPayload.length() == 0) {
             std::cout << RED << "Err: Nada informado" << RESET << std::endl;
@@ -163,32 +170,40 @@ void erasePreviousVotes(){
     sem_post(&semaforo_replica_comm);
 }
 
-void vote(int myPort){
-    ifstream file("database/leadingCandidate");
-    int nOldCandidatePort;
-    if (!file >> nOldCandidatePort)
-    {
-         nOldCandidatePort = 0;
-    }
+void putKingOnTheThrone(){
+        cout << YELLOW <<  "KING ON THE THRONE" << endl;
+        std::ofstream masterDBPort;
+        masterDBPort.open("database/masterDBPort", std::ios_base::out); 
+        masterDBPort << to_string(MAIN_REPLICA_PORT);
+        masterDBPort.close();
+}
 
-    int newCandidatePort = max(nOldCandidatePort,myPort);
-    if(newCandidatePort != nOldCandidatePort){
-        std::ofstream leadingCandidate;
-        leadingCandidate.open("database/leadingCandidate", std::ios_base::out);
-        leadingCandidate << to_string(newCandidatePort);
-    }
+void vote(int myPort){
+    //ifstream file("database/leadingCandidate");
+    //int nOldCandidatePort;
+    // if (!file >> nOldCandidatePort)
+    // {
+    //      nOldCandidatePort = 0;
+    // }
+
+    BEST_CANDIDATE = BEST_CANDIDATE >= myPort ? BEST_CANDIDATE : myPort;
+    // std::ofstream leadingCandidate;
+    // leadingCandidate.open("database/leadingCandidate", std::ios_base::out);
+    // leadingCandidate << to_string(newCandidatePort);
+
+    // file.close();
 }
 
 int getWinner(){
 
-    ifstream file("database/leadingCandidate");
-    int nWinnerPort;
-    if (!file >> nWinnerPort)
-    {
-         nWinnerPort = 0;
-    }
-    cout << "Winner" << nWinnerPort << endl;
-    return nWinnerPort;
+    // ifstream file("database/leadingCandidate");
+    // int nWinnerPort;
+    // if (!(file >> nWinnerPort))
+    // {
+    //      nWinnerPort = 0;
+    // }
+    // file.close();
+    return BEST_CANDIDATE;
 }
 
 int getNextVoter(int port){
@@ -199,48 +214,64 @@ int getNextVoter(int port){
     return port + 1;
 }
 
-void* checkIfMasterAlive(void *threadarg){
+void* checkIfKingAlive(void *threadarg){
     struct thread_data *my_data;   
     my_data = (struct thread_data *) threadarg;
     int myPort = my_data->port;
-    //sem_wait(&semaforo_replica_comm);
+    sem_wait(&semaforo_replica_comm);
+    sem_post(&semaforo_replica_comm);
     while (true)
     {   
-        sleep(0.5);
-        cout << "VOTE TIME : MY PORT " << myPort << " MAIN : " << MAIN_REPLICA_PORT << endl;
-        if(myPort == MAIN_REPLICA_PORT){
-            if(SIMULATE_ERROR){
+        //cout << YELLOW << "MY PORT " << myPort << endl;
+        if(myPort == MAIN_REPLICA_PORT && MAIN_REPLICA_ALIVE == 1){   /// ESTE É o REI
+            if(SIMULATE_ONE_DEATH || SIMULATE_ALL_DEATHS){  // Força o REI A MORRER
             sem_wait(&semaforo_replica_comm);
-                cout << "ALIVE?"<<MAIN_REPLICA_ALIVE <<endl;
+                SIMULATE_ONE_DEATH = 0;
                 MAIN_REPLICA_ALIVE = 0;
+                cout << RED  << "THE KING: " << MAIN_REPLICA_PORT << " IS DEAD !" <<endl;
             sem_post(&semaforo_replica_comm);
+            break;
             }
         }
         else{
-            if(MAIN_REPLICA_ALIVE == 0 && VOTING_STARTED == 0){ // Inicia
-                sem_wait(&semaforo_replica_comm);
+            if(MAIN_REPLICA_ALIVE == 0 && VOTING_STARTED == 0){ // INICIA A VOTAÇÃO SE O REI ESTIVER MORTO
+                //sem_wait(&semaforo_replica_comm);
                 VOTING_STARTED = 1;
                 VOTE_STARTER = myPort;
+                cout << CYAN << "ELECTION STARTED !" << " STARTER = " << VOTE_STARTER <<endl;
                 erasePreviousVotes();
                 NEXT_TO_VOTE = getNextVoter(myPort);
+                cout << WHITE << "IS VOTING: <" << myPort << "> NEXT TO VOTE = " << NEXT_TO_VOTE <<endl;
                 vote(myPort);
-                sem_post(&semaforo_replica_comm);
+                //sem_post(&semaforo_replica_comm);
             }
-            else if(VOTING_STARTED == 1 && myPort == VOTE_STARTER){
+            else if(VOTING_STARTED == 1 && myPort == NEXT_TO_VOTE && myPort == VOTE_STARTER ){ // QUANDO CHEGAR DE VOLTA NO CARA QUE INICIOU A VOTAÇÃO, Decide-se o rei
                 sem_wait(&semaforo_replica_comm);
                 MAIN_REPLICA_PORT = getWinner();
+                cout << GREEN << "THE NEW KING IS = " << MAIN_REPLICA_PORT << " LONG SHALL HE LIVE" << endl;
+                putKingOnTheThrone();
                 MAIN_REPLICA_ALIVE = 1;
                 VOTING_STARTED = 0;
                 sem_post(&semaforo_replica_comm);
             }
-            else if(VOTING_STARTED == 1 && myPort == NEXT_TO_VOTE){
+            else if(VOTING_STARTED == 1 && myPort == NEXT_TO_VOTE){  // O PROXIMO VOTA
                 sem_wait(&semaforo_replica_comm);
+                cout << WHITE  << "IS VOTING: <" << myPort << "> NEXT TO VOTE = " << NEXT_TO_VOTE <<endl;
                 vote(myPort);
                 NEXT_TO_VOTE = getNextVoter(myPort);
+                sem_post(&semaforo_replica_comm);
+            }
+            else{ // TRATA o caso do próximo a votar não estar respondendo
                 sem_wait(&semaforo_replica_comm);
+                VOTING_CHANCES_USED += 1;
+                if(VOTING_CHANCES_USED >= MAX_VOTING_CHANCES){
+                    NEXT_TO_VOTE = getNextVoter(NEXT_TO_VOTE);
+                }
+                sem_post(&semaforo_replica_comm);
             }
             
         }
+        usleep(2000000);
         
     }
 
@@ -248,7 +279,7 @@ void* checkIfMasterAlive(void *threadarg){
 
 void* startListening(void *threadarg) {
     
-    vecReplicas.push_back(((struct thread_data *) threadarg)->port);
+    //vecReplicas.push_back(((struct thread_data *) threadarg)->port);
     while(true) {
         struct thread_data *my_data;   
         my_data = (struct thread_data *) threadarg;
@@ -258,6 +289,9 @@ void* startListening(void *threadarg) {
         struct sockaddr_in serv_addr, cli_addr;
 
         sockfd = createSocket();
+        if(sockfd < 0){
+            std::cout << RED << "Error on Binding" << RESET << std::endl;
+        }
         serv_addr = prepForListening(portno);
         bindToSocket(sockfd,serv_addr);
         printListeningInfo(portno);
@@ -279,7 +313,8 @@ void* startListening(void *threadarg) {
 
 int main(int argc, char **argv){
    // Porta  lista_portas[NUMBER_OF_REPLICAS];
-   MAIN_REPLICA_PORT = INITIAL_PORT_REPLICA;
+    MAIN_REPLICA_PORT = INITIAL_PORT_REPLICA;
+    putKingOnTheThrone();
     sem_init(&semaforo_replica_comm,0,1);
     ofstream myfile;
     myfile.open ("../utils/portas.txt");
@@ -292,8 +327,8 @@ int main(int argc, char **argv){
         td[i].port = INITIAL_PORT_REPLICA + i;
         tdVote[i].port = INITIAL_PORT_REPLICA + i;
 
-        //rc = pthread_create(&listeningThreads[i], NULL, startListening, (void *)&td[i]);
-        rc = pthread_create(&votingThreads[i], NULL, checkIfMasterAlive, (void *)&tdVote[i]);
+        rc = pthread_create(&listeningThreads[i], NULL, startListening, (void *)&td[i]);
+        rc = pthread_create(&votingThreads[i], NULL, checkIfKingAlive, (void *)&tdVote[i]);
 
         if (rc){
 

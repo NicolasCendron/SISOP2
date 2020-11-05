@@ -26,7 +26,7 @@ vector<connection*> arrConnection;
 
 
 vector<packet*> handleDataBaseMessages();
-
+int arrReplicasNSock[100000];
 void error(char *msg) {
     perror(msg);
     fflush(stdout);
@@ -100,13 +100,17 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr) {
 }
 
 int getMasterDBSocket(){
-    ifstream file("database/masterDBNSocket");
-    int nSocket;
-    if (file >> nSocket)
+    ifstream file("database/masterDBPort");
+    int nPort;
+    if (file >> nPort)
     {
-        return nSocket;
+        return arrReplicasNSock[nPort];
     }
     return 0; 
+}
+
+void addReplicaNSock(int port, int nSocket){
+    arrReplicasNSock[port] = nSocket;
 }
 
 void sendMessageToDataBase(packet *pack) {

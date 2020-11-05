@@ -1,4 +1,4 @@
 database/replica:
-	g++ -pthread database/replica.cpp -std=gnu++11 -o database/replica
+	g++ -g -pthread database/replica.cpp -std=gnu++11 -o database/replica
 clean:
 	rm database/replica
