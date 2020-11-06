@@ -22,7 +22,7 @@ struct thread_data
 
 int MAIN_REPLICA_PORT = 0;
 int MAIN_REPLICA_ALIVE = 1;
-int SIMULATE_ONE_DEATH = 1;
+int SIMULATE_ONE_DEATH = 0;
 int SIMULATE_ALL_DEATHS = 0;
 int VOTING_STARTED = 0;
 int VOTE_STARTER = 0;
@@ -36,9 +36,11 @@ sem_t semaphore_server;
 
 pthread_t listeningThreads[NUMBER_OF_REPLICAS];
 pthread_t votingThreads[NUMBER_OF_REPLICAS];
+pthread_t killTheKingThread;
+struct thread_data tdKill;
 struct thread_data td[NUMBER_OF_REPLICAS];
 struct thread_data tdVote[NUMBER_OF_REPLICAS];
-vector<int> vecReplicas;
+int replicaAlive[100000] = {0};
 int createSocket() {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); // Cria socket para escutar um client
     if (sockfd < 0)
@@ -164,9 +166,7 @@ int handleRequisitions(int newsockfd) {
 
 void erasePreviousVotes(){
     sem_wait(&semaforo_replica_comm);
-    std::ofstream leadingCandidate;
-    leadingCandidate.open("database/leadingCandidate", std::ios_base::out);
-    leadingCandidate << to_string(0);
+    BEST_CANDIDATE = 0;
     sem_post(&semaforo_replica_comm);
 }
 
@@ -278,13 +278,12 @@ void* checkIfKingAlive(void *threadarg){
 }
 
 void* startListening(void *threadarg) {
-    
-    //vecReplicas.push_back(((struct thread_data *) threadarg)->port);
+    struct thread_data *my_data;   
+    my_data = (struct thread_data *) threadarg;
+    int portno = my_data->port;
+    replicaAlive[portno] = 1;
     while(true) {
-        struct thread_data *my_data;   
-        my_data = (struct thread_data *) threadarg;
 
-        int portno = my_data->port;
         int sockfd, newsockfd, clilen;
         struct sockaddr_in serv_addr, cli_addr;
 
@@ -310,6 +309,21 @@ void* startListening(void *threadarg) {
 
 }
 
+void* killTheKing(void *threadarg){
+
+    while(true){
+        char key;
+        std::cin >> key;
+        if (key == 'k') {
+            SIMULATE_ONE_DEATH = 1;
+        }
+        if (key == 'a') {
+            SIMULATE_ALL_DEATHS = 1;
+        }
+    }
+
+
+}
 
 int main(int argc, char **argv){
    // Porta  lista_portas[NUMBER_OF_REPLICAS];
@@ -319,6 +333,8 @@ int main(int argc, char **argv){
     ofstream myfile;
     myfile.open ("../utils/portas.txt");
   
+    pthread_create(&killTheKingThread, NULL, killTheKing, (void *)&tdKill);
+
     int i,rc;
     for( i=0; i < NUMBER_OF_REPLICAS; i++ )    
     {
