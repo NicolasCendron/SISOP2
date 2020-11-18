@@ -22,7 +22,8 @@
 using namespace std;
 
 #define NUMBER_OF_REPLICAS 3
-#define INITIAL_PORT_REPLICA 12000
+#define INITIAL_PORT_REPLICA 50020
+#define INITIAL_SERVER_REPLICA 30020
 #define READ_FROM_FILE 2000
 #define WRITE_TO_FILE 2001
 
@@ -103,10 +104,10 @@ int main(int argc, char **argv){
     {
         td[i].thread_id = i;
 
-        td[i].port = 9901 + i;
+        td[i].port = INITIAL_SERVER_REPLICA + i;
         //lista_portas[i].porta = 9901 + i;
         //lista_portas[i].status = 1;
-        myfile << to_string(9901 + i) + ";";
+        myfile << to_string(INITIAL_SERVER_REPLICA + i) + ";";
         myfile << "1;\n";
         rc = pthread_create(&listeningThreads[i], NULL, startListening, (void *)&td[i]);
 

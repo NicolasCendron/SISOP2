@@ -278,9 +278,9 @@ int handleUserMessages(int newsockfd) {
             case USER_CONNECTED_MESSAGE:
                 bConnectionSuccess = handleUserConnection(pack, newsockfd);
                 if(bConnectionSuccess) {
-                    sendMessageHistoryToClient(pack->strGroupName,newsockfd);
-                    sendMessageToGroup(pack);
                     sendMessageToDataBase(pack);
+                    //sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+                    sendMessageToGroup(pack);
                 }
                 else {
                     sendConnectionFailedMessage(pack,newsockfd);

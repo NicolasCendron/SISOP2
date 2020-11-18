@@ -25,7 +25,7 @@ using namespace std;
 #include "../client/colors.h"
 
 #define NUMBER_OF_REPLICAS 3
-#define INITIAL_PORT_REPLICA 12000
+#define INITIAL_PORT_REPLICA 50020
 #define READ_FROM_FILE 2000
 #define WRITE_TO_FILE 2001
 #define MESSAGE_LIST_END 2002

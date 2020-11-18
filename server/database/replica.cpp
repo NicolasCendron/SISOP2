@@ -97,6 +97,7 @@ void writeMessageToFile(packet *pack) {
         outfile << serializePacket(pack);
     }
     //sem_post(&semaforo_replica_comm);
+    std::cout << GREEN << "Mensagem Salva" << RESET << std::endl;
     std::cout << GREEN << "LIBERANDO:: writeMessageToFile" << RESET << std::endl;
 }
 
@@ -109,7 +110,7 @@ vector<packet*> sendEntireFile(string strGroupName, int nSocket) {
 
     std::cout << RED << "BLOQUEANDO:: sendEntireFile" << RESET << std::endl;
     //sem_wait(&semaforo_replica_comm);
-
+    std::cout << GREEN << "Recuperando Mensagens" << RESET << std::endl;
     while (file.read(&buffer[0], PROTOCOL_PACKET_SIZE)) {
         pack = deserializePacket(string(buffer));
         arrPacks.push_back(pack);
@@ -117,12 +118,14 @@ vector<packet*> sendEntireFile(string strGroupName, int nSocket) {
 
     string strMessage;
     for(auto pack : arrPacks){
+        std::cout << YELLOW << "Enviando Mensagem para o Front" << RESET << std::endl;
         strMessage = serializePacket(pack);
         writeToSocket(nSocket,strMessage); 
     }
     pack->nMessageType = MESSAGE_LIST_END;
     strMessage = serializePacket(pack);
     writeToSocket(nSocket,strMessage); 
+    std::cout << YELLOW << "Enviada Mensagem de Finalização" << RESET << std::endl;
 
     sem_post(&semaforo_replica_comm);
     std::cout << GREEN << "LIBERANDO:: sendEntireFile" << RESET << std::endl;
@@ -134,7 +137,9 @@ int handleRequisitions(int newsockfd) {
     packet *pack;
     bool bConnectionSuccess = true;
     while(bConnectionSuccess) {
+        cout << YELLOW << "Aguardando mensagens no socket : " << newsockfd <<endl;
         pack = readFromSocket(newsockfd);
+        cout << YELLOW << "Mensagem recebida : " << newsockfd <<endl;
         if(pack == NULL) {
             close(newsockfd);
         }
@@ -299,8 +304,8 @@ void* startListening(void *threadarg) {
             std::cout << RED << "Err: not listening" << RESET << std::endl;
             exit(1);
         }
-
         newsockfd = acceptConnection(sockfd, cli_addr);
+        cout << "Conectado na porta:" << portno << " e Socket:" << newsockfd <<endl;
         int ret = handleRequisitions(newsockfd);
         if(ret == -1) {
             break;
