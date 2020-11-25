@@ -53,9 +53,7 @@ sem_t semaforo_connections;
 
 int writeToSocket(int sockfd, string message){
     
-    
-
-    fflush(stdin);
+    //fflush(stdin);
     int nMessageLength = message.length();
     int n;
 
@@ -458,9 +456,19 @@ packet* readFromSocket(int newsockfd){
 
  //std::cout << RED << "BLOQUEANDO:: readFromSocket" << RESET << std::endl;
     //sem_wait(&semaforo_server);
-    if (read(newsockfd,buffer,PROTOCOL_PACKET_SIZE) < 0) {
-      std::cout << RED << "ERROR reading from socket" << RESET << std::endl;
-      return NULL;   
+    
+    int readIsComplete = -1;
+
+    try{
+        readIsComplete = read(newsockfd,buffer,PROTOCOL_PACKET_SIZE);
+    }
+    catch(...){
+        std::cout << RED << "Unknown errors when reading messages :(" << RESET << std::endl;
+    }
+
+    if (readIsComplete < 0) {
+        std::cout << RED << "ERROR reading from socket" << RESET << std::endl;
+        return NULL;
     }
     //sem_post(&semaforo_server);
     //std::cout << GREEN << "LIBERADNO:: readFromSocket" << RESET << std::endl;

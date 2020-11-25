@@ -138,6 +138,10 @@ vector<packet*> requestMessageHistoryFromDatabase(string strGroupName) {
     packRequestHistory->nMessageType = READ_FROM_FILE;
     packRequestHistory->strGroupName = strGroupName;
     packRequestHistory->strPayload = strGroupName;
+
+    packRequestHistory->nTimeStamp = getTimeStamp();
+    packRequestHistory->strUserName = "SERVER";
+
     string mensagemUsuario = serializePacket(packRequestHistory);       
     if(!mensagemUsuario.empty()) {
         writeToSocket(nMasterSocket,mensagemUsuario); 
@@ -279,7 +283,7 @@ int handleUserMessages(int newsockfd) {
                 bConnectionSuccess = handleUserConnection(pack, newsockfd);
                 if(bConnectionSuccess) {
                     sendMessageToDataBase(pack);
-                    //sendMessageHistoryToClient(pack->strGroupName,newsockfd);
+                    sendMessageHistoryToClient(pack->strGroupName,newsockfd);
                     sendMessageToGroup(pack);
                 }
                 else {
