@@ -89,12 +89,12 @@ int acceptConnection(int sockfd,struct sockaddr_in cli_addr) {
 void writeMessageToFile(packet *pack) {
     std::cout << RED << "BLOQUEANDO:: writeMessageToFile" << RESET << std::endl;
     //sem_wait(&semaforo_replica_comm);
-    std::ofstream outfile;
+    std::ofstream outfile[NUMBER_OF_REPLICAS];
     for (int cont = 0; cont < NUMBER_OF_REPLICAS; cont ++){
         string strPath = "db_" + to_string(INITIAL_PORT_REPLICA + cont) + "_" + pack->strGroupName;
         cout << "path:" << strPath <<endl;
-        outfile.open(strPath, std::ios_base::app); // append instead of overwrite
-        outfile << serializePacket(pack);
+        outfile[cont].open(strPath, std::ios_base::app); // append instead of overwrite
+        outfile[cont] << serializePacket(pack);
     }
     //sem_post(&semaforo_replica_comm);
     std::cout << GREEN << "Mensagem Salva" << RESET << std::endl;
@@ -261,9 +261,9 @@ void* checkIfKingAlive(void *threadarg){
             }
             else if(VOTING_STARTED == 1 && myPort == NEXT_TO_VOTE){  // O PROXIMO VOTA
                 sem_wait(&semaforo_replica_comm);
+                NEXT_TO_VOTE = getNextVoter(myPort);
                 cout << WHITE  << "IS VOTING: <" << myPort << "> NEXT TO VOTE = " << NEXT_TO_VOTE <<endl;
                 vote(myPort);
-                NEXT_TO_VOTE = getNextVoter(myPort);
                 sem_post(&semaforo_replica_comm);
             }
             else{ // TRATA o caso do próximo a votar não estar respondendo
